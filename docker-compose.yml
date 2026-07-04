@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Leave these unset to run on the built-in simulators; set them to go live.
+      - HERMES_LLM_PROVIDER=${HERMES_LLM_PROVIDER:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN:-}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-}
+      - MPESA_CONSUMER_KEY=${MPESA_CONSUMER_KEY:-}
+      - MPESA_CONSUMER_SECRET=${MPESA_CONSUMER_SECRET:-}
+      - MPESA_SHORTCODE=${MPESA_SHORTCODE:-}
+      - MPESA_PASSKEY=${MPESA_PASSKEY:-}
+      - MPESA_CALLBACK_URL=${MPESA_CALLBACK_URL:-}
+    volumes:
+      - hermes-data:/app/data
+
+volumes:
+  hermes-data:

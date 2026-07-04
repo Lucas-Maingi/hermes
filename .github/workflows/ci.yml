@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev,dashboard]"
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Run test suite with coverage
+        run: pytest --cov=hermes --cov-report=term-missing
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -t hermes-api .
+
+      - name: Boot container and verify /health
+        run: |
+          docker run -d --name hermes -p 8000:8000 hermes-api
+          for i in $(seq 1 45); do
+            if curl --silent --fail http://localhost:8000/health; then
+              echo "API healthy after ~$((i * 2))s"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' hermes)" != "true" ]; then
+              echo "Container exited during boot" >&2
+              docker logs hermes >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "API failed to become healthy in time" >&2
+          docker logs hermes >&2
+          exit 1

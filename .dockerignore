@@ -1,0 +1,16 @@
+.git
+.venv
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+tests/
+.pytest_cache/
+.coverage
+demo/
+*.db
+*.egg-info/
+.env
+# Keep README.md: the Dockerfile copies it and pyproject.toml's readme field needs it.
+*.md
+!README.md
