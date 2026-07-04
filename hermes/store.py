@@ -33,11 +33,13 @@ CREATE TABLE IF NOT EXISTS conversations (
     needs_human INTEGER,
     order_status TEXT,
     order_total REAL,
+    mpesa_checkout_id TEXT,
     created_at REAL,
     updated_at REAL,
     data TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_conv_created ON conversations(created_at);
+CREATE INDEX IF NOT EXISTS idx_conv_checkout ON conversations(mpesa_checkout_id);
 """
 
 
@@ -98,19 +100,21 @@ class HermesStore:
 
         order_status = conv.order.status.value if conv.order else ""
         order_total = conv.order.total if conv.order else 0.0
+        checkout_id = conv.payment.checkout_request_id if conv.payment else None
         with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO conversations
                     (id, customer_phone, channel, needs_human, order_status, order_total,
-                     created_at, updated_at, data)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     mpesa_checkout_id, created_at, updated_at, data)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     customer_phone=excluded.customer_phone,
                     channel=excluded.channel,
                     needs_human=excluded.needs_human,
                     order_status=excluded.order_status,
                     order_total=excluded.order_total,
+                    mpesa_checkout_id=excluded.mpesa_checkout_id,
                     updated_at=excluded.updated_at,
                     data=excluded.data
                 """,
@@ -121,6 +125,7 @@ class HermesStore:
                     int(conv.needs_human),
                     order_status,
                     order_total,
+                    checkout_id,
                     conv.created_at,
                     time.time(),
                     _conversation_to_json(conv),
@@ -131,6 +136,28 @@ class HermesStore:
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT data FROM conversations WHERE id = ?", (conversation_id,)
+            ).fetchone()
+        return _conversation_from_dict(json.loads(row["data"])) if row else None
+
+    def get_by_checkout(self, checkout_request_id: str) -> Optional[Conversation]:
+        """Find the conversation whose pending payment matches a Daraja
+        CheckoutRequestID -- used by the M-Pesa callback handler."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT data FROM conversations WHERE mpesa_checkout_id = ? "
+                "ORDER BY updated_at DESC LIMIT 1",
+                (checkout_request_id,),
+            ).fetchone()
+        return _conversation_from_dict(json.loads(row["data"])) if row else None
+
+    def get_latest_by_phone(self, phone: str) -> Optional[Conversation]:
+        """Most recent conversation for a phone number -- used to continue a
+        WhatsApp thread across messages."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT data FROM conversations WHERE customer_phone = ? "
+                "ORDER BY updated_at DESC LIMIT 1",
+                (phone,),
             ).fetchone()
         return _conversation_from_dict(json.loads(row["data"])) if row else None
 
