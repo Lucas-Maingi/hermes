@@ -22,6 +22,13 @@ _QUESTION_RE = re.compile(
     r"delivery|deliver|available|stock|what|which)\b|\?",
     re.I,
 )
+# Checking on an existing payment must be tested BEFORE pay-intent, since
+# "have you received my payment?" also contains "payment".
+_CHECK_RE = re.compile(
+    r"\b(received|receive[d]?|got (?:it|my|the)|go(?:ne)? through|went through|confirmed|"
+    r"umepokea|nimelipa|have you (?:got|received|seen))\b",
+    re.I,
+)
 _PAY_RE = re.compile(r"\b(pay|payment|checkout|mpesa|m-pesa|nlipe|nilipe|lipa|nataka kulipa)\b", re.I)
 _HUMAN_RE = re.compile(
     r"\b(human|person|agent|someone|manager|talk to|speak to|mtu|real person|customer care)\b", re.I
@@ -58,7 +65,11 @@ class MockLLM:
                 tool_calls=[ToolCall(name="escalate_to_human", arguments={"reason": "customer_requested"})]
             )
 
-        # 2. Payment intent -> STK push (only meaningful once an order exists;
+        # 2. Checking on an existing payment -> query its status.
+        if _CHECK_RE.search(text) and "check_payment" in tool_names:
+            return LLMResponse(tool_calls=[ToolCall(name="check_payment", arguments={})])
+
+        # 3. Payment intent -> STK push (only meaningful once an order exists;
         #    the tool itself validates and returns an error the agent relays).
         if _PAY_RE.search(text) and "mpesa_stk_push" in tool_names:
             return LLMResponse(tool_calls=[ToolCall(name="mpesa_stk_push", arguments={})])
