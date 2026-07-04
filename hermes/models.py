@@ -101,6 +101,7 @@ class Conversation:
     channel: str = "simulator"   # "whatsapp" | "simulator"
     messages: list[Message] = field(default_factory=list)
     order: Optional[Order] = None
+    payment: Optional[Payment] = None
     needs_human: bool = False
     created_at: float = field(default_factory=time.time)
 
