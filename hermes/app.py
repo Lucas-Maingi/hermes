@@ -73,6 +73,9 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
 
     @app.post("/webhook")
     async def inbound(request: Request):
+        body = await request.body()
+        if not whatsapp.verify_signature(body, request.headers.get("X-Hub-Signature-256")):
+            return Response(status_code=status.HTTP_403_FORBIDDEN)
         payload = await request.json()
         for msg in whatsapp.parse_inbound(payload):
             business = rt.business_for_phone_number_id(msg.phone_number_id)

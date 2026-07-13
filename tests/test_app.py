@@ -97,6 +97,52 @@ class TestWhatsAppInbound:
         assert r.status_code == 200
 
 
+class TestWebhookSignature:
+    """Meta signs webhook POSTs with X-Hub-Signature-256 (HMAC-SHA256 of the
+    raw body, keyed with the app secret). With a secret configured, unsigned
+    or badly-signed payloads must be rejected."""
+
+    def _sign(self, secret: str, body: bytes) -> str:
+        import hashlib
+        import hmac
+
+        return "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+    def test_unsigned_payload_rejected_when_secret_set(self, client, monkeypatch):
+        c, _, _ = client
+        monkeypatch.setenv("WHATSAPP_APP_SECRET", "app-secret")
+        r = c.post("/webhook", json={"entry": []})
+        assert r.status_code == 403
+
+    def test_bad_signature_rejected(self, client, monkeypatch):
+        c, _, _ = client
+        monkeypatch.setenv("WHATSAPP_APP_SECRET", "app-secret")
+        r = c.post("/webhook", json={"entry": []}, headers={"X-Hub-Signature-256": "sha256=" + "0" * 64})
+        assert r.status_code == 403
+
+    def test_valid_signature_accepted(self, client, monkeypatch):
+        import json
+
+        c, _, _ = client
+        monkeypatch.setenv("WHATSAPP_APP_SECRET", "app-secret")
+        body = json.dumps({"entry": []}).encode()
+        r = c.post(
+            "/webhook",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": self._sign("app-secret", body),
+            },
+        )
+        assert r.status_code == 200
+
+    def test_no_secret_skips_verification(self, client, monkeypatch):
+        c, _, _ = client
+        monkeypatch.delenv("WHATSAPP_APP_SECRET", raising=False)
+        r = c.post("/webhook", json={"entry": []})
+        assert r.status_code == 200
+
+
 class TestMpesaCallback:
     def test_success_callback_marks_order_paid(self, client):
         c, rt, sim = client

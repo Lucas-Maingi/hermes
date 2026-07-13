@@ -9,6 +9,8 @@ Graph API call.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 from dataclasses import dataclass
 
@@ -57,6 +59,25 @@ def verify_webhook(mode: str | None, token: str | None, challenge: str | None) -
     if mode == "subscribe" and token and token == expected:
         return challenge
     return None
+
+
+def verify_signature(body: bytes, signature_header: str | None) -> bool:
+    """Verify Meta's ``X-Hub-Signature-256`` header: ``sha256=`` followed by
+    the HMAC-SHA256 of the raw request body keyed with the app secret.
+
+    When WHATSAPP_APP_SECRET is unset (simulator / local dev) verification is
+    skipped so the app stays credential-free. When it *is* set, an absent or
+    invalid signature rejects the payload - without this check, anyone who
+    discovers the webhook URL can inject fake "customer" messages and burn
+    LLM spend or place bogus orders.
+    """
+    secret = os.getenv("WHATSAPP_APP_SECRET", "")
+    if not secret:
+        return True
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header.removeprefix("sha256="))
 
 
 def send_text(to_phone: str, text: str, *, phone_number_id: str | None = None) -> bool:
