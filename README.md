@@ -88,6 +88,7 @@ Set these and the same code switches from simulator to the real integration auto
 | :--- | :--- |
 | `HERMES_LLM_PROVIDER`, `GROQ_API_KEY` | Run the agent on a real model (Groq free tier / OpenAI). |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN` | Meta Cloud API. Point your app's webhook at `POST /webhook` (verify at `GET /webhook`). |
+| `WHATSAPP_APP_SECRET` | Enables `X-Hub-Signature-256` verification on inbound webhooks — with it set, unsigned or tampered payloads get a 403 instead of reaching the agent. Set it in production; without it anyone who finds your webhook URL can inject fake customer messages. |
 | `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY`, `MPESA_CALLBACK_URL`, `MPESA_ENVIRONMENT` | Daraja. Set `MPESA_CALLBACK_URL` to your public `POST /mpesa/callback`. |
 
 ## Testing
