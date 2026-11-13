@@ -15,7 +15,6 @@ from hermes.models import Conversation
 from hermes.mpesa.factory import get_mpesa_client
 from hermes.platform import PlatformStore
 from hermes.rag import build_retriever
-from hermes.sample_business import sample_business
 from hermes.store import HermesStore
 
 
@@ -33,7 +32,9 @@ class Runtime:
             raise ValueError("Pass either business or businesses, not both")
         if businesses is not None and not businesses:
             raise ValueError("At least one business is required")
-        default = business or (businesses[0] if businesses else sample_business())
+        default = business or (
+            businesses[0] if businesses else Business(id="hermes_workspace", name="Hermes workspace")
+        )
         configured = businesses or [default]
         if default not in configured:
             configured = [default, *configured]

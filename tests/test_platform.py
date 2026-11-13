@@ -53,6 +53,7 @@ def test_invitation_onboarding_and_per_merchant_session(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_INVITE_TOKEN", "invite-secret")
     rt = Runtime(db_path=str(tmp_path / "onboarding.db"), llm=MockLLM(), mpesa=MpesaSimulator())
     client = TestClient(create_test_app(rt))
+    assert client.get("/auth/session").json() == {"authenticated": False}
 
     denied = client.post(
         "/auth/register",
@@ -75,6 +76,7 @@ def test_invitation_onboarding_and_per_merchant_session(tmp_path, monkeypatch):
         },
     )
     assert registered.status_code == 200
+    assert client.get("/auth/session").json() == {"authenticated": True}
     cookie = registered.cookies.get("hermes_session")
     assert cookie and "httponly" in registered.headers["set-cookie"].lower()
 
@@ -86,6 +88,7 @@ def test_invitation_onboarding_and_per_merchant_session(tmp_path, monkeypatch):
     assert dashboard.json()["subscription"]["trial_days_remaining"] == 7
 
     client.post("/auth/logout")
+    assert client.get("/auth/session").json() == {"authenticated": False}
     assert client.get("/api/dashboard").status_code == 401
 
 
@@ -98,6 +101,7 @@ def test_self_serve_registration_starts_premium_trial_without_invite(tmp_path, m
     assert client.get("/public/config").json() == {
         "invite_required": False,
         "signup_enabled": True,
+        "local_email_verification": False,
         "email_verification_required": True,
         "premium_trial_days": 7,
         "premium_monthly_price_kes": 2500,
@@ -201,6 +205,273 @@ def test_self_serve_registration_is_closed_by_default(tmp_path, monkeypatch):
     assert response.status_code == 503
 
 
+def test_local_signup_verification_is_available_only_from_loopback(tmp_path, monkeypatch):
+    monkeypatch.delenv("HERMES_INVITE_TOKEN", raising=False)
+    monkeypatch.delenv("HERMES_PUBLIC_SIGNUP_ENABLED", raising=False)
+    monkeypatch.delenv("HERMES_SMTP_HOST", raising=False)
+    monkeypatch.delenv("HERMES_EMAIL_FROM", raising=False)
+    monkeypatch.delenv("HERMES_ENVIRONMENT", raising=False)
+    monkeypatch.setenv("HERMES_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    runtime = Runtime(db_path=str(tmp_path / "local-signup.db"), llm=MockLLM(), mpesa=MpesaSimulator())
+    assert runtime.default_business.name == "Hermes workspace"
+    assert runtime.default_business.products == []
+    assert "duka_demo" not in runtime.businesses
+    client = TestClient(
+        create_app(runtime),
+        base_url="http://127.0.0.1",
+        client=("127.0.0.1", 50000),
+    )
+
+    config = client.get("/public/config").json()
+    assert config["signup_enabled"] is True
+    assert config["local_email_verification"] is True
+    response = client.post(
+        "/auth/register",
+        json={
+            "name": "Local merchant",
+            "email": "local@example.test",
+            "owner_phone": "+254 712 345 678",
+            "password": "a-strong-password",
+        },
+    )
+    assert response.status_code == 202
+    result = response.json()
+    assert result["delivery"] == "local_development"
+    token = parse_qs(urlsplit(result["verification_url"]).query)["verify"][0]
+    verified = client.post("/auth/verify-email", json={"token": token})
+    assert verified.status_code == 200
+    assert client.get("/api/dashboard").json()["business"]["products"] == []
+
+    with runtime.platform._connect() as connection:
+        owner_phone = connection.execute(
+            "SELECT phone_enc FROM users WHERE email = ?",
+            ("local@example.test",),
+        ).fetchone()["phone_enc"]
+    assert owner_phone.startswith("enc:")
+    assert "+254 712 345 678" not in owner_phone
+
+    production = TestClient(create_app(Runtime(
+        db_path=str(tmp_path / "production-signup.db"),
+        llm=MockLLM(),
+        mpesa=MpesaSimulator(),
+    )), base_url="https://hermes.example")
+    monkeypatch.setenv("HERMES_ENVIRONMENT", "production")
+    assert production.get("/public/config").json()["signup_enabled"] is False
+    assert production.post(
+        "/auth/register",
+        json={
+            "name": "Blocked merchant",
+            "email": "blocked@example.test",
+            "password": "a-strong-password",
+        },
+    ).status_code == 503
+
+
+def test_catalog_csv_import_merges_and_export_is_spreadsheet_safe(tmp_path, monkeypatch):
+    monkeypatch.delenv("HERMES_INVITE_TOKEN", raising=False)
+    monkeypatch.setenv("HERMES_PUBLIC_SIGNUP_ENABLED", "true")
+    runtime = Runtime(db_path=str(tmp_path / "catalog-sync.db"), llm=MockLLM(), mpesa=MpesaSimulator())
+    client = TestClient(create_test_app(runtime))
+    owner = register_verified(
+        client,
+        {
+            "name": "Catalog shop",
+            "email": "catalog@example.test",
+            "password": "catalog-owner-password",
+        },
+    )
+    assert owner.status_code == 200
+    business_id = client.get("/api/dashboard").json()["business"]["id"]
+    runtime.platform.save_catalog(
+        business_id,
+        products=[{"name": "Existing item", "price": 25, "unit": "", "aliases": [], "in_stock": True}],
+        info={},
+    )
+
+    csv_content = (
+        "name,price,unit,aliases,in_stock,stock_quantity\n"
+        "Coffee,320,500g,java|kahawa,true,9\n"
+        "=HYPERLINK(\"https://example.test\"),10,each,,true,\n"
+    )
+    imported = client.post(
+        "/api/catalog/import",
+        files={"file": ("catalog.csv", csv_content.encode(), "text/csv")},
+    )
+    assert imported.status_code == 200
+    assert imported.json()["products_imported"] == 2
+    assert imported.json()["merge_mode"] == "upsert"
+    dashboard = client.get("/api/dashboard").json()
+    assert {product["name"] for product in dashboard["business"]["products"]} == {
+        "Existing item",
+        "Coffee",
+        '=HYPERLINK("https://example.test")',
+    }
+    assert dashboard["inventory"][0]["quantity"] == 9
+
+    exported = client.get("/api/catalog/export")
+    assert exported.status_code == 200
+    assert exported.headers["content-type"].startswith("text/csv")
+    assert "'=HYPERLINK(" in exported.text
+
+
+def test_catalog_import_holds_price_and_stock_conflicts_for_merchant_review(tmp_path, monkeypatch):
+    monkeypatch.delenv("HERMES_INVITE_TOKEN", raising=False)
+    monkeypatch.setenv("HERMES_PUBLIC_SIGNUP_ENABLED", "true")
+    runtime = Runtime(db_path=str(tmp_path / "catalog-conflicts.db"), llm=MockLLM(), mpesa=MpesaSimulator())
+    client = TestClient(create_test_app(runtime))
+    owner = register_verified(
+        client,
+        {
+            "name": "Conflict shop",
+            "email": "conflict@example.test",
+            "password": "conflict-owner-password",
+        },
+    )
+    assert owner.status_code == 200
+    business_id = client.get("/api/dashboard").json()["business"]["id"]
+    products = [
+        {"name": "Coffee", "price": 100, "unit": "", "aliases": [], "in_stock": True},
+        {"name": "Tea", "price": 40, "unit": "", "aliases": [], "in_stock": True},
+        {"name": "Flour", "price": 30, "unit": "", "aliases": [], "in_stock": True},
+    ]
+    runtime.platform.save_catalog(business_id, products=products, info={})
+    runtime.platform.set_inventory(business_id, "Coffee", 5, "Initial count")
+    runtime.platform.set_inventory(business_id, "Tea", 2, "Initial count")
+    runtime.platform.set_inventory(business_id, "Flour", 7, "Initial count")
+
+    imported = client.post(
+        "/api/catalog/import",
+        files={
+            "file": (
+                "catalog.csv",
+                b"name,price,stock_quantity\nCoffee,120,5\nTea,40,1\nFlour,35,7\n",
+                "text/csv",
+            )
+        },
+    )
+    assert imported.status_code == 200
+    assert imported.json()["conflicts_created"] == 3
+    dashboard = client.get("/api/dashboard").json()
+    current_products = {product["name"]: product for product in dashboard["business"]["products"]}
+    assert current_products["Coffee"]["price"] == 100
+    assert current_products["Tea"]["price"] == 40
+    assert {item["product_name"]: item["quantity"] for item in dashboard["inventory"]} == {
+        "Coffee": 5,
+        "Tea": 2,
+        "Flour": 7,
+    }
+    conflicts = {conflict["product_name"]: conflict for conflict in dashboard["catalog_conflicts"]}
+    assert conflicts["Coffee"]["current"] == {"price": 100}
+    assert conflicts["Coffee"]["incoming"] == {"price": 120.0}
+    assert conflicts["Tea"]["current"] == {"stock_quantity": 2}
+    assert conflicts["Tea"]["incoming"] == {"stock_quantity": 1}
+
+    duplicate = client.post(
+        "/api/catalog/import",
+        files={"file": ("catalog.csv", b"name,price\nCoffee,125\n", "text/csv")},
+    )
+    assert duplicate.status_code == 200
+    assert duplicate.json()["conflicts_created"] == 0
+    assert duplicate.json()["conflicts_updated"] == 1
+    refreshed = client.get("/api/dashboard").json()["catalog_conflicts"]
+    coffee_conflict = next(conflict for conflict in refreshed if conflict["product_name"] == "Coffee")
+    assert coffee_conflict["id"] == conflicts["Coffee"]["id"]
+    assert coffee_conflict["incoming"] == {"price": 125.0}
+
+    runtime.platform.save_catalog(
+        business_id,
+        products=[
+            {"name": "Coffee", "price": 105, "unit": "", "aliases": [], "in_stock": True, "stock_quantity": 5},
+            {"name": "Tea", "price": 40, "unit": "", "aliases": [], "in_stock": True, "stock_quantity": 2},
+            {"name": "Flour", "price": 30, "unit": "", "aliases": [], "in_stock": True, "stock_quantity": 7},
+        ],
+        info={},
+    )
+    runtime.platform.set_inventory(business_id, "Coffee", 6, "Count corrected during review")
+    stale = client.patch(
+        f"/api/catalog/conflicts/{coffee_conflict['id']}",
+        json={"resolution": "accept_incoming"},
+    )
+    assert stale.json()["status"] == "stale"
+    refreshed_conflict = client.get("/api/dashboard").json()["catalog_conflicts"]
+    coffee_conflict = next(conflict for conflict in refreshed_conflict if conflict["product_name"] == "Coffee")
+    assert coffee_conflict["current"] == {"price": 105}
+
+    accepted = client.patch(
+        f"/api/catalog/conflicts/{coffee_conflict['id']}",
+        json={"resolution": "accept_incoming"},
+    )
+    runtime.platform.reserve_order_inventory(business_id, "tea-order", [{"name": "Tea", "quantity": 2}])
+    below_reserved = client.patch(
+        f"/api/catalog/conflicts/{conflicts['Tea']['id']}",
+        json={"resolution": "accept_incoming"},
+    )
+    assert below_reserved.status_code == 400
+    assert "reserved units" in below_reserved.json()["detail"]
+    runtime.platform.release_order_inventory(business_id, "tea-order")
+    accepted_stock = client.patch(
+        f"/api/catalog/conflicts/{conflicts['Tea']['id']}",
+        json={"resolution": "accept_incoming"},
+    )
+    kept = client.patch(
+        f"/api/catalog/conflicts/{conflicts['Flour']['id']}",
+        json={"resolution": "keep_current"},
+    )
+    assert accepted.json()["status"] == "accepted"
+    assert accepted_stock.json()["status"] == "accepted"
+    assert kept.json()["status"] == "kept"
+    dashboard = client.get("/api/dashboard").json()
+    current_products = {product["name"]: product for product in dashboard["business"]["products"]}
+    assert current_products["Coffee"]["price"] == 125
+    assert current_products["Tea"]["price"] == 40
+    assert current_products["Flour"]["price"] == 30
+    assert {item["product_name"]: item["quantity"] for item in dashboard["inventory"]} == {
+        "Coffee": 6,
+        "Tea": 1,
+        "Flour": 7,
+    }
+    assert dashboard["catalog_conflicts"] == []
+
+
+def test_invalid_catalog_csv_does_not_apply_partial_changes_or_conflicts(tmp_path, monkeypatch):
+    monkeypatch.delenv("HERMES_INVITE_TOKEN", raising=False)
+    monkeypatch.setenv("HERMES_PUBLIC_SIGNUP_ENABLED", "true")
+    runtime = Runtime(db_path=str(tmp_path / "invalid-catalog-import.db"), llm=MockLLM(), mpesa=MpesaSimulator())
+    client = TestClient(create_test_app(runtime))
+    owner = register_verified(
+        client,
+        {
+            "name": "Invalid import shop",
+            "email": "invalid-import@example.test",
+            "password": "invalid-import-owner-password",
+        },
+    )
+    assert owner.status_code == 200
+    business_id = client.get("/api/dashboard").json()["business"]["id"]
+    runtime.platform.save_catalog(
+        business_id,
+        products=[{"name": "Coffee", "price": 100, "unit": "", "aliases": [], "in_stock": True}],
+        info={},
+    )
+    runtime.platform.set_inventory(business_id, "Coffee", 5, "Initial count")
+
+    response = client.post(
+        "/api/catalog/import",
+        files={
+            "file": (
+                "invalid.csv",
+                b"name,price,stock_quantity\nCoffee,120,4\nBroken,not-a-price,1\n",
+                "text/csv",
+            )
+        },
+    )
+    assert response.status_code == 400
+    dashboard = client.get("/api/dashboard").json()
+    assert dashboard["business"]["products"][0]["price"] == 100
+    assert dashboard["inventory"][0]["quantity"] == 5
+    assert dashboard["catalog_conflicts"] == []
+
+
 def test_registration_rate_limit_returns_retry_after(tmp_path, monkeypatch):
     monkeypatch.setenv("HERMES_INVITE_TOKEN", "invite-secret")
     runtime = Runtime(db_path=str(tmp_path / "registration-rate-limit.db"), llm=MockLLM(), mpesa=MpesaSimulator())
@@ -299,11 +570,38 @@ def test_inventory_counts_audit_and_bookings_are_tenant_scoped(tmp_path, monkeyp
     booking = client.post("/api/bookings", json=booking_payload)
     assert booking.status_code == 201
     assert booking.json()["customer_name"] == "Customer One"
+    rescheduled_start = starts_at + timedelta(hours=2)
+    edited = client.patch(
+        f"/api/bookings/{booking.json()['id']}",
+        json={
+            "service": "Follow-up consultation",
+            "customer_name": "Updated Customer",
+            "starts_at": rescheduled_start.isoformat(),
+            "duration_minutes": 45,
+            "notes": "Bring previous results",
+        },
+    )
+    assert edited.status_code == 200
+    assert edited.json()["service"] == "Follow-up consultation"
+    assert edited.json()["customer_name"] == "Updated Customer"
+    assert edited.json()["duration_minutes"] == 45
+    assert edited.json()["notes"] == "Bring previous results"
+    assert edited.json()["starts_at"] == rescheduled_start.timestamp()
     overlapping = client.post(
         "/api/bookings",
-        json={**booking_payload, "customer_name": "Customer Two", "starts_at": (starts_at + timedelta(minutes=30)).isoformat()},
+        json={
+            **booking_payload,
+            "customer_name": "Customer Two",
+            "starts_at": (rescheduled_start + timedelta(minutes=30)).isoformat(),
+        },
     )
     assert overlapping.status_code == 409
+    self_overlap = client.patch(
+        f"/api/bookings/{booking.json()['id']}",
+        json={"starts_at": (rescheduled_start + timedelta(minutes=15)).isoformat()},
+    )
+    assert self_overlap.status_code == 200
+    assert self_overlap.json()["starts_at"] == (rescheduled_start + timedelta(minutes=15)).timestamp()
     assert client.patch(f"/api/bookings/{booking.json()['id']}", json={"status": "cancelled"}).status_code == 200
 
     other_owner = TestClient(app)
@@ -315,6 +613,10 @@ def test_inventory_counts_audit_and_bookings_are_tenant_scoped(tmp_path, monkeyp
     second_dashboard = other_owner.get("/api/dashboard").json()
     assert second_dashboard["inventory"] == []
     assert second_dashboard["bookings"] == []
+    assert other_owner.patch(
+        f"/api/bookings/{booking.json()['id']}",
+        json={"service": "Unauthorized edit"},
+    ).status_code == 404
 
 
 def test_order_inventory_reservation_and_payment_deduction_are_idempotent(platform):

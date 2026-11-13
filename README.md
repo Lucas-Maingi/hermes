@@ -29,7 +29,7 @@ This is a real, connectable product, not a mock. To be precise about the line:
 - M-Pesa Daraja OAuth, STK push, status query and callback reconciliation.
 - A provider-agnostic LLM adapter, tenant-configurable credentials, and explicit consent before customer data is sent to an external LLM or embedding service.
 - Email-verified merchant signup with a seven-day Premium trial (invite-only mode remains available), tenant-scoped sessions/data, encrypted provider credentials and conversations, an assignable staff handoff queue, idempotent inbound events, retryable outbound messages, document BM25/vector hybrid retrieval, and the browser dashboard.
-- Tenant-scoped stock counts with adjustment history, expiring order reservations and payment-confirmed deductions; customer self-booking with merchant-configured weekly hours and 30-minute slots.
+- Tenant-scoped stock counts with adjustment history, expiring order reservations and payment-confirmed deductions; appointment scheduling with a public self-booking page, configurable merchant hours, overlap protection, and dashboard search, status updates, and rescheduling.
 - Approved WhatsApp template records, opt-in/opt-out tracking (including STOP keywords), and a durable scheduled follow-up worker. Merchants must first get templates approved in Meta and attest approval in the dashboard.
 - Hermes Premium subscription checkout via a separately configured Daraja STK push, with renewal reconciliation, a seven-day grace period, and callback status/amount/phone/receipt verification before activation. A status query alone does not finalize an order.
 - Dashboard campaign attribution for Meta click-to-WhatsApp referral source IDs, plus read-only Meta account and Daraja OAuth checks.
@@ -94,13 +94,17 @@ $env:HERMES_DB = ".\hermes.db"
 uvicorn hermes.app:app --reload --port 8000
 ```
 
-Open `http://127.0.0.1:8000` to register. Email verification is required before
-the account session and seven-day Premium trial begin. In local development,
-configure SMTP (`HERMES_SMTP_HOST` and `HERMES_EMAIL_FROM`, with optional
-credentials/TLS settings below) or use the test mail sender. Self-serve
-registration is disabled by default; enable it with
-`HERMES_PUBLIC_SIGNUP_ENABLED=true`. To restrict registration to invited
-pilots, set `HERMES_INVITE_TOKEN` instead. The trial is followed by a free
+Open `http://127.0.0.1:8000` to create a merchant workspace. Email verification
+is required before the account session and seven-day Premium trial begin. On a
+loopback-only localhost request, Hermes provides a clearly labeled local
+verification link when SMTP is not configured; no email is sent. This
+development-only path is disabled when `HERMES_ENVIRONMENT=production`. For
+real email delivery, configure SMTP (`HERMES_SMTP_HOST` and `HERMES_EMAIL_FROM`,
+with optional credentials/TLS settings below). Public production self-serve
+registration requires SMTP plus `HERMES_PUBLIC_SIGNUP_ENABLED=true`. To restrict
+registration to invited pilots, set `HERMES_INVITE_TOKEN` instead. The optional
+owner contact phone is encrypted but is not SMS-verified; no phone verification
+provider is currently configured. The trial is followed by a free
 workspace tier. Premium costs KES 2,500 per month, with a seven-day grace
 period and customer-authorized M-Pesa STK renewal; feature access is gated by
 the current plan. For durable message retries, billing reconciliation,
@@ -109,13 +113,21 @@ the same environment and run
 `python scripts/run_worker.py`. The API also attempts immediate queued delivery;
 the worker recovers retries and sends after API restarts.
 
-Configure WhatsApp, M-Pesa and optional tenant LLM/embedding credentials in the
-Integrations page. Credentials are write-only and encrypted with
+Configure each merchant's WhatsApp, M-Pesa and optional tenant LLM/embedding
+credentials in the Integrations page. Credentials are write-only and encrypted with
 `HERMES_ENCRYPTION_KEY`. Customer data stays on the built-in mock agent unless
 the merchant explicitly consents to an external LLM; hybrid vector retrieval
 similarly requires embedding consent. Booking hours, inventory, and campaign
 source IDs are managed in the dashboard. The `/chat` API is a separate
 simulator surface and requires `HERMES_CHAT_API_TOKEN`.
+
+The Products page can import and export CSV catalogs. Imports merge products
+by exact case-insensitive name, preserve products absent from the file, and
+update non-conflicting fields. Changed prices or tracked stock quantities are
+held in a merchant review queue before they can replace current values. CSV is a transfer bridge, not a live
+integration: direct two-way sync must be implemented and rehearsed for each
+merchant's inventory/POS provider. Hermes does not seed a sample shop in a new
+runtime; `scripts/seed_demo_data.py` is an explicit demo-only tool.
 
 The Knowledge base accepts text-based PDF, Word (`.docx`/`.docm`), Excel
 (`.xlsx`/`.xlsm`), PowerPoint (`.pptx`/`.pptm`), TXT, Markdown, CSV, JSON, HTML,

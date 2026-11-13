@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('owner', 'staff')),
+    phone_enc TEXT,
     email_verified_at REAL,
     created_at REAL NOT NULL
 );
@@ -138,6 +139,19 @@ CREATE TABLE IF NOT EXISTS inventory_reservations (
     updated_at REAL NOT NULL,
     PRIMARY KEY (business_id, order_id, product_name)
 );
+CREATE TABLE IF NOT EXISTS catalog_conflicts (
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    product_key TEXT NOT NULL,
+    payload_enc TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'accepted', 'kept')),
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    resolved_at REAL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_conflicts_pending
+    ON catalog_conflicts(business_id, product_key) WHERE status = 'pending';
 CREATE TABLE IF NOT EXISTS bookings (
     id TEXT PRIMARY KEY,
     business_id TEXT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -294,6 +308,8 @@ class PlatformStore:
             if "email_verified_at" not in user_columns:
                 conn.execute("ALTER TABLE users ADD COLUMN email_verified_at REAL")
                 conn.execute("UPDATE users SET email_verified_at = created_at")
+            if "phone_enc" not in user_columns:
+                conn.execute("ALTER TABLE users ADD COLUMN phone_enc TEXT")
             billing_columns = {
                 row["name"] for row in conn.execute("PRAGMA table_info(billing_payments)").fetchall()
             }
@@ -355,6 +371,7 @@ class PlatformStore:
         name: str,
         email: str,
         password: str,
+        owner_phone: str = "",
         currency: str = "KES",
         products: list[dict[str, Any]] | None = None,
         info: dict[str, str] | None = None,
@@ -372,6 +389,9 @@ class PlatformStore:
         email = email.strip().lower()
         if not name or not email or "@" not in email:
             raise ValueError("A business name and valid email are required")
+        owner_phone = owner_phone.strip()
+        if owner_phone and not re.fullmatch(r"\+?[0-9 ()-]{7,24}", owner_phone):
+            raise ValueError("Enter a valid contact phone number")
         if not 1 <= premium_trial_days <= 30:
             raise ValueError("Premium trial must be between 1 and 30 days")
         if premium_monthly_price_kes < 1:
@@ -420,9 +440,17 @@ class PlatformStore:
                     ),
                 )
                 conn.execute(
-                    "INSERT INTO users (id, business_id, email, password_hash, role, created_at) "
-                    "VALUES (?, ?, ?, ?, 'owner', ?)",
-                    (user_id, business_id, email, password_hash, now),
+                    "INSERT INTO users "
+                    "(id, business_id, email, password_hash, role, phone_enc, created_at) "
+                    "VALUES (?, ?, ?, ?, 'owner', ?, ?)",
+                    (
+                        user_id,
+                        business_id,
+                        email,
+                        password_hash,
+                        self._protect_data(owner_phone) if owner_phone else None,
+                        now,
+                    ),
                 )
             except sqlite3.IntegrityError as exc:
                 raise ValueError("Email or WhatsApp phone-number ID is already registered") from exc
@@ -931,6 +959,204 @@ class PlatformStore:
                 (self._protect_data(json.dumps(config)), business_id),
             )
 
+    def record_catalog_conflict(
+        self,
+        business_id: str,
+        *,
+        product_name: str,
+        current: dict[str, Any],
+        incoming: dict[str, Any],
+        source: str,
+    ) -> tuple[str, bool]:
+        name = product_name.strip()
+        if not name or not current or set(current) != set(incoming):
+            raise ValueError("A catalog conflict must include matching current and incoming values")
+        allowed_fields = {"price", "stock_quantity", "in_stock"}
+        if not set(current).issubset(allowed_fields):
+            raise ValueError("Catalog conflicts may only include price and stock fields")
+        payload = json.dumps(
+            {
+                "product_name": name,
+                "current": current,
+                "incoming": incoming,
+                "source": source[:80],
+            }
+        )
+        product_key = hashlib.sha256(name.casefold().encode()).hexdigest()
+        now = time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT id FROM catalog_conflicts "
+                "WHERE business_id = ? AND product_key = ? AND status = 'pending'",
+                (business_id, product_key),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE catalog_conflicts SET payload_enc = ?, updated_at = ? WHERE id = ?",
+                    (self._protect_data(payload), now, existing["id"]),
+                )
+                return existing["id"], False
+            conflict_id = uuid.uuid4().hex
+            conn.execute(
+                """
+                INSERT INTO catalog_conflicts
+                    (id, business_id, product_key, payload_enc, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'pending', ?, ?)
+                """,
+                (conflict_id, business_id, product_key, self._protect_data(payload), now, now),
+            )
+        return conflict_id, True
+
+    def catalog_conflicts(self, business_id: str, *, status: str = "pending", limit: int = 100) -> list[dict]:
+        if status not in {"pending", "accepted", "kept"}:
+            raise ValueError("Invalid catalog conflict status")
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, payload_enc, status, created_at, resolved_at FROM catalog_conflicts "
+                "WHERE business_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?",
+                (business_id, status, limit),
+            ).fetchall()
+        conflicts = []
+        for row in rows:
+            conflict = json.loads(self._reveal_data(row["payload_enc"]))
+            conflicts.append(
+                {
+                    "id": row["id"],
+                    **conflict,
+                    "status": row["status"],
+                    "created_at": row["created_at"],
+                    "resolved_at": row["resolved_at"],
+                }
+            )
+        return conflicts
+
+    def resolve_catalog_conflict(
+        self,
+        business_id: str,
+        conflict_id: str,
+        resolution: str,
+    ) -> dict[str, str] | None:
+        if resolution not in {"keep_current", "accept_incoming"}:
+            raise ValueError("Choose whether to keep the current values or accept the incoming values")
+        now = time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                "SELECT payload_enc FROM catalog_conflicts "
+                "WHERE id = ? AND business_id = ? AND status = 'pending'",
+                (conflict_id, business_id),
+            ).fetchone()
+            if row is None:
+                return None
+            conflict = json.loads(self._reveal_data(row["payload_enc"]))
+            status = "accepted" if resolution == "accept_incoming" else "kept"
+            if resolution == "accept_incoming":
+                business = conn.execute(
+                    "SELECT config_json FROM businesses WHERE id = ?",
+                    (business_id,),
+                ).fetchone()
+                if business is None:
+                    raise KeyError(business_id)
+                config = json.loads(self._reveal_data(business["config_json"]))
+                product = next(
+                    (
+                        item
+                        for item in config.get("products", [])
+                        if item["name"].casefold() == conflict["product_name"].casefold()
+                    ),
+                    None,
+                )
+                if product is None:
+                    raise ValueError("This product was removed; refresh the catalog before resolving the conflict")
+                current_values: dict[str, Any] = {}
+                for field in conflict["current"]:
+                    if field == "stock_quantity":
+                        stock_row = conn.execute(
+                            "SELECT quantity FROM inventory WHERE business_id = ? AND product_name = ?",
+                            (business_id, product["name"]),
+                        ).fetchone()
+                        current_values[field] = (
+                            stock_row["quantity"] if stock_row else product.get("stock_quantity")
+                        )
+                    else:
+                        current_values[field] = product[field]
+                if current_values != conflict["current"]:
+                    conflict["current"] = current_values
+                    conn.execute(
+                        "UPDATE catalog_conflicts SET payload_enc = ?, updated_at = ? WHERE id = ?",
+                        (
+                            self._protect_data(json.dumps(conflict)),
+                            now,
+                            conflict_id,
+                        ),
+                    )
+                    return {
+                        "id": conflict_id,
+                        "status": "stale",
+                        "product_name": conflict["product_name"],
+                    }
+                incoming = conflict["incoming"]
+                quantity = incoming.get("stock_quantity")
+                if quantity is not None:
+                    reserved = conn.execute(
+                        """
+                        SELECT COALESCE(SUM(quantity), 0) AS quantity
+                        FROM inventory_reservations
+                        WHERE business_id = ? AND product_name = ?
+                          AND status = 'active' AND expires_at > ?
+                        """,
+                        (business_id, product["name"], now),
+                    ).fetchone()["quantity"]
+                    if quantity < reserved:
+                        raise ValueError(
+                            f"Incoming stock cannot be below {reserved} currently reserved units"
+                        )
+                    current = conn.execute(
+                        "SELECT quantity FROM inventory WHERE business_id = ? AND product_name = ?",
+                        (business_id, product["name"]),
+                    ).fetchone()
+                    previous_quantity = current["quantity"] if current else 0
+                    product["stock_quantity"] = quantity
+                    product["in_stock"] = quantity > 0
+                    conn.execute(
+                        """
+                        INSERT INTO inventory (business_id, product_name, quantity, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(business_id, product_name) DO UPDATE SET
+                            quantity = excluded.quantity, updated_at = excluded.updated_at
+                        """,
+                        (business_id, product["name"], quantity, now),
+                    )
+                    conn.execute(
+                        "INSERT INTO inventory_events "
+                        "(id, business_id, product_name, delta, reason, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            uuid.uuid4().hex,
+                            business_id,
+                            product["name"],
+                            quantity - previous_quantity,
+                            self._protect_data(f"Accepted catalog update from {conflict['source']}"),
+                            now,
+                        ),
+                    )
+                elif "in_stock" in incoming:
+                    product["in_stock"] = bool(incoming["in_stock"])
+                if "price" in incoming:
+                    product["price"] = incoming["price"]
+                Product(**product)
+                conn.execute(
+                    "UPDATE businesses SET config_json = ? WHERE id = ?",
+                    (self._protect_data(json.dumps(config)), business_id),
+                )
+            conn.execute(
+                "UPDATE catalog_conflicts SET status = ?, updated_at = ?, resolved_at = ? "
+                "WHERE id = ? AND business_id = ? AND status = 'pending'",
+                (status, now, now, conflict_id, business_id),
+            )
+        return {"id": conflict_id, "status": status, "product_name": conflict["product_name"]}
+
     def set_inventory(self, business_id: str, product_name: str, quantity: int, reason: str) -> dict[str, Any]:
         name = product_name.strip()
         note = reason.strip()
@@ -1432,6 +1658,47 @@ class PlatformStore:
     def update_booking_status(self, business_id: str, booking_id: str, status: str) -> bool:
         if status not in {"confirmed", "cancelled", "completed"}:
             raise ValueError("Invalid booking status")
+        return self.update_booking(
+            business_id,
+            booking_id,
+            status=status,
+        ) is not None
+
+    def update_booking(
+        self,
+        business_id: str,
+        booking_id: str,
+        *,
+        status: str | None = None,
+        service: str | None = None,
+        customer_name: str | None = None,
+        customer_phone: str | None = None,
+        starts_at: float | None = None,
+        duration_minutes: int | None = None,
+        notes: str | None = None,
+    ) -> dict[str, Any] | None:
+        if status is not None and status not in {"confirmed", "cancelled", "completed"}:
+            raise ValueError("Invalid booking status")
+        if service is not None and (not service.strip() or len(service.strip()) > 120):
+            raise ValueError("Service is required (max 120 characters)")
+        if customer_name is not None and (
+            not customer_name.strip() or len(customer_name.strip()) > 120
+        ):
+            raise ValueError("Customer name is required (max 120 characters)")
+        if customer_phone is not None and (
+            not customer_phone.strip() or len(customer_phone.strip()) > 40
+        ):
+            raise ValueError("A valid customer phone number is required")
+        if duration_minutes is not None and not 5 <= duration_minutes <= 1440:
+            raise ValueError("Booking duration must be between 5 minutes and 24 hours")
+        if notes is not None and len(notes) > 2000:
+            raise ValueError("Booking notes cannot exceed 2,000 characters")
+        if all(
+            value is None
+            for value in (status, service, customer_name, customer_phone, starts_at, duration_minutes, notes)
+        ):
+            raise ValueError("At least one booking field must be updated")
+
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             booking = conn.execute(
@@ -1439,8 +1706,11 @@ class PlatformStore:
                 (business_id, booking_id),
             ).fetchone()
             if booking is None:
-                return False
-            if status == "confirmed" and booking["status"] != "confirmed":
+                return None
+            updated_start = booking["starts_at"] if starts_at is None else starts_at
+            updated_duration = booking["duration_minutes"] if duration_minutes is None else duration_minutes
+            updated_status = booking["status"] if status is None else status
+            if updated_status == "confirmed":
                 conflict = conn.execute(
                     """
                     SELECT 1 FROM bookings
@@ -1451,17 +1721,31 @@ class PlatformStore:
                     (
                         business_id,
                         booking_id,
-                        booking["starts_at"] + booking["duration_minutes"] * 60,
-                        booking["starts_at"],
+                        updated_start + updated_duration * 60,
+                        updated_start,
                     ),
                 ).fetchone()
                 if conflict:
-                    raise ValueError("That time has another confirmed booking")
-            cursor = conn.execute(
-                "UPDATE bookings SET status = ? WHERE business_id = ? AND id = ?",
-                (status, business_id, booking_id),
+                    raise ValueError("That time already has another confirmed booking")
+            fields = {
+                "status": updated_status,
+                "starts_at": updated_start,
+                "duration_minutes": updated_duration,
+            }
+            if service is not None:
+                fields["service"] = service.strip()
+            if customer_name is not None:
+                fields["customer_name"] = self._protect_data(customer_name.strip())
+            if customer_phone is not None:
+                fields["customer_phone"] = self._protect_data(customer_phone.strip())
+            if notes is not None:
+                fields["notes"] = self._protect_data(notes.strip())
+            assignments = ", ".join(f"{field} = ?" for field in fields)
+            conn.execute(
+                f"UPDATE bookings SET {assignments} WHERE business_id = ? AND id = ?",
+                (*fields.values(), business_id, booking_id),
             )
-        return cursor.rowcount == 1
+        return self.get_booking(business_id, booking_id)
 
     def cancel_customer_booking(self, business_id: str, booking_id: str, phone: str) -> bool:
         supplied = self.normalize_whatsapp_phone(phone)

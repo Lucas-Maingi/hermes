@@ -10,7 +10,9 @@ Endpoints:
 
 from __future__ import annotations
 
+import csv
 import hmac
+import io
 import ipaddress
 import logging
 import os
@@ -28,6 +30,7 @@ from starlette.datastructures import UploadFile
 from starlette.responses import FileResponse, HTMLResponse
 
 from hermes import whatsapp
+from hermes.business import Product
 from hermes.callbacks import parse_stk_callback
 from hermes.document_loader import extract_document_text
 from hermes.mailer import send_verification_email, smtp_is_configured
@@ -82,6 +85,7 @@ class RegisterRequest(BaseModel):
     invite_code: str = ""
     name: str = Field(min_length=1, max_length=120)
     email: str = Field(min_length=3, max_length=254)
+    owner_phone: str = Field(default="", max_length=40)
     password: str = Field(min_length=12, max_length=256)
 
 
@@ -101,6 +105,11 @@ class ResendVerificationRequest(BaseModel):
 class CatalogRequest(BaseModel):
     products: list[dict] = Field(max_length=1000)
     info: dict[str, str] = Field(default_factory=dict)
+
+
+class CatalogConflictResolutionRequest(BaseModel):
+    resolution: str
+
 
 class InventoryAdjustmentRequest(BaseModel):
     product_name: str = Field(min_length=1, max_length=120)
@@ -135,7 +144,13 @@ class PublicBookingCancellationRequest(BaseModel):
 
 
 class BookingStatusRequest(BaseModel):
-    status: str
+    status: str | None = None
+    service: str | None = Field(default=None, min_length=1, max_length=120)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=120)
+    customer_phone: str | None = Field(default=None, min_length=8, max_length=40)
+    starts_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=5, le=1440)
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class WhatsAppTemplateRequest(BaseModel):
@@ -191,6 +206,7 @@ class KnowledgeDocumentRequest(BaseModel):
 
 
 MAX_KNOWLEDGE_UPLOAD_BYTES = 15 * 1024 * 1024
+MAX_CATALOG_UPLOAD_BYTES = 2 * 1024 * 1024
 
 
 class HandoffUpdateRequest(BaseModel):
@@ -362,7 +378,7 @@ def create_app(
                 status_code=503,
                 detail="Verification requires a valid public HTTPS application URL",
             ) from exc
-        local_verification = parsed_base_url.hostname in {"localhost", "127.0.0.1"} or (
+        local_verification = parsed_base_url.hostname in {"localhost", "127.0.0.1", "::1"} or (
             verification_email_sender is not None and parsed_base_url.hostname == "testserver"
         )
         if (
@@ -375,6 +391,16 @@ def create_app(
         ):
             raise HTTPException(status_code=503, detail="Verification requires a valid public HTTPS application URL")
         return base_url
+
+    def is_local_development_request(request: Request) -> bool:
+        if os.getenv("HERMES_ENVIRONMENT", "").lower() == "production" or not request.client:
+            return False
+        hostname = (request.url.hostname or "").lower()
+        try:
+            client_is_loopback = ipaddress.ip_address(request.client.host).is_loopback
+        except ValueError:
+            client_is_loopback = False
+        return client_is_loopback and hostname in {"localhost", "127.0.0.1", "::1"}
 
     @app.get("/", include_in_schema=False)
     def dashboard():
@@ -395,13 +421,18 @@ def create_app(
         return HTMLResponse(template.replace("__BUSINESS_ID__", business_id))
 
     @app.get("/public/config")
-    def public_config():
+    def public_config(request: Request):
         invite_required = bool(os.getenv("HERMES_INVITE_TOKEN", ""))
         mail_ready = verification_email_sender is not None or smtp_is_configured()
+        local_verification = is_local_development_request(request)
         return {
             "invite_required": invite_required,
-            "signup_enabled": mail_ready
-            and (invite_required or os.getenv("HERMES_PUBLIC_SIGNUP_ENABLED", "").lower() == "true"),
+            "signup_enabled": (
+                mail_ready
+                and (invite_required or os.getenv("HERMES_PUBLIC_SIGNUP_ENABLED", "").lower() == "true")
+            )
+            or local_verification,
+            "local_email_verification": local_verification and not mail_ready,
             "email_verification_required": True,
             "premium_trial_days": 7,
             "premium_monthly_price_kes": 2500,
@@ -410,31 +441,44 @@ def create_app(
     @app.post("/auth/register", status_code=202)
     def register(req: RegisterRequest, request: Request):
         _enforce_auth_rate_limit(request, rt, "register", req.email)
-        if verification_email_sender is None and not smtp_is_configured():
+        local_verification = is_local_development_request(request)
+        mail_ready = verification_email_sender is not None or smtp_is_configured()
+        if not mail_ready and not local_verification:
             raise HTTPException(status_code=503, detail="Email verification delivery is not configured")
         base_url = verification_base_url(request)
         invite = os.getenv("HERMES_INVITE_TOKEN", "")
         if invite:
             if not hmac.compare_digest(req.invite_code, invite):
                 raise HTTPException(status_code=403, detail="Invalid invitation code")
-        elif os.getenv("HERMES_PUBLIC_SIGNUP_ENABLED", "").lower() != "true":
+        elif (
+            os.getenv("HERMES_PUBLIC_SIGNUP_ENABLED", "").lower() != "true"
+            and not local_verification
+        ):
             raise HTTPException(status_code=503, detail="Self-serve registration is not enabled")
         try:
             user_id, business_id = rt.platform.create_business(
                 name=req.name,
                 email=req.email,
+                owner_phone=req.owner_phone,
                 defer_trial_until_verified=True,
                 password=req.password,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         token = rt.platform.create_email_verification_token(user_id)
+        verification_url = f"{base_url}/?verify={token}"
+        if not mail_ready:
+            return {
+                "status": "verification_required",
+                "delivery": "local_development",
+                "verification_url": verification_url,
+            }
         try:
-            email_sender(req.email.strip().lower(), f"{base_url}/?verify={token}")
+            email_sender(req.email.strip().lower(), verification_url)
         except (OSError, RuntimeError, ValueError, smtplib.SMTPException) as exc:
             logger.exception("Could not send account verification email")
             raise HTTPException(status_code=503, detail="Verification email could not be sent; try again shortly") from exc
-        return {"status": "verification_required"}
+        return {"status": "verification_required", "delivery": "email"}
 
     @app.post("/auth/verify-email")
     def verify_email(req: EmailVerificationRequest, request: Request, response: Response):
@@ -455,14 +499,23 @@ def create_app(
     @app.post("/auth/verification/resend", status_code=202)
     def resend_verification(req: ResendVerificationRequest, request: Request):
         _enforce_auth_rate_limit(request, rt, "verification", req.email)
-        if verification_email_sender is None and not smtp_is_configured():
+        local_verification = is_local_development_request(request)
+        mail_ready = verification_email_sender is not None or smtp_is_configured()
+        if not mail_ready and not local_verification:
             raise HTTPException(status_code=503, detail="Email verification delivery is not configured")
         base_url = verification_base_url(request)
         pending = rt.platform.create_email_verification_for_email(req.email)
         if pending is not None:
             _, token = pending
+            verification_url = f"{base_url}/?verify={token}"
+            if not mail_ready:
+                return {
+                    "status": "verification_required",
+                    "delivery": "local_development",
+                    "verification_url": verification_url,
+                }
             try:
-                email_sender(req.email.strip().lower(), f"{base_url}/?verify={token}")
+                email_sender(req.email.strip().lower(), verification_url)
             except (OSError, RuntimeError, ValueError, smtplib.SMTPException) as exc:
                 logger.exception("Could not resend account verification email")
                 raise HTTPException(status_code=503, detail="Verification email could not be sent; try again shortly") from exc
@@ -485,6 +538,11 @@ def create_app(
         if token:
             rt.platform.delete_session(token)
         response.delete_cookie("hermes_session", path="/", httponly=True, samesite="strict")
+
+    @app.get("/auth/session")
+    def auth_session(request: Request):
+        token = request.cookies.get("hermes_session")
+        return {"authenticated": bool(token and rt.platform.session_user(token))}
 
     @app.get("/api/dashboard")
     def dashboard_data(request: Request):
@@ -519,12 +577,17 @@ def create_app(
             "handoffs": rt.platform.list_handoffs(business.id),
             "inventory": rt.platform.inventory(business.id),
             "inventory_history": rt.platform.inventory_history(business.id, limit=30),
-            "bookings": rt.platform.list_bookings(business.id, limit=100),
+            "bookings": rt.platform.list_bookings(
+                business.id,
+                start_at=datetime.now(timezone.utc).timestamp() - 30 * 24 * 60 * 60,
+                limit=500,
+            ),
             "booking_settings": rt.platform.booking_settings(business.id),
             "campaigns": rt.platform.campaigns(business.id),
             "whatsapp_templates": rt.platform.whatsapp_templates(business.id),
             "whatsapp_followups": rt.platform.list_followups(business.id, limit=100),
             "documents": rt.platform.documents(business.id),
+            "catalog_conflicts": rt.platform.catalog_conflicts(business.id),
             "integrations": rt.platform.integration_status(business.id),
         }
 
@@ -569,6 +632,253 @@ def create_app(
             if rt.default_business.id == business.id:
                 rt.default_business = business
         return {"status": "saved"}
+
+    @app.post("/api/catalog/import")
+    async def import_catalog(request: Request):
+        user = _current_user(request, rt)
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                body_size = int(content_length)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="Invalid Content-Length header.") from exc
+            if body_size > MAX_CATALOG_UPLOAD_BYTES + 1024 * 1024:
+                raise HTTPException(status_code=413, detail="Catalog CSV exceeds the 2 MB upload limit.")
+        async with request.form(max_files=1, max_fields=0, max_part_size=MAX_CATALOG_UPLOAD_BYTES) as form:
+            file = form.get("file")
+            if not isinstance(file, UploadFile):
+                raise HTTPException(status_code=400, detail="Choose a CSV catalog file.")
+            if file.size is not None and file.size > MAX_CATALOG_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail="Catalog CSV exceeds the 2 MB upload limit.")
+            content = await file.read(MAX_CATALOG_UPLOAD_BYTES + 1)
+        if len(content) > MAX_CATALOG_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Catalog CSV exceeds the 2 MB upload limit.")
+        try:
+            reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig"), newline=""))
+            columns = {field.strip().lower() for field in reader.fieldnames or [] if field}
+            if not {"name", "price"}.issubset(columns):
+                raise ValueError("CSV must include name and price columns.")
+            imported: list[dict] = []
+            seen_names: set[str] = set()
+            for row_number, row in enumerate(reader, start=2):
+                if row_number > 1001:
+                    raise ValueError("A catalog import can contain at most 1,000 products.")
+                values = {
+                    (key or "").strip().lower(): (value or "").strip()
+                    for key, value in row.items()
+                    if key is not None
+                }
+                name = values.get("name", "")
+                if not name:
+                    raise ValueError(f"Product name is missing on CSV row {row_number}.")
+                if name.casefold() in seen_names:
+                    raise ValueError(f"Duplicate product name on CSV row {row_number}.")
+                seen_names.add(name.casefold())
+                price = float(values.get("price", ""))
+                in_stock_value = values.get("in_stock", "").casefold()
+                if in_stock_value and in_stock_value not in {
+                    "true", "false", "1", "0", "yes", "no", "available", "unavailable"
+                }:
+                    raise ValueError(f"Availability on CSV row {row_number} must be true or false.")
+                product = {
+                    "name": name,
+                    "price": price,
+                    "unit": values.get("unit", ""),
+                    "aliases": [alias.strip() for alias in values.get("aliases", "").split("|") if alias.strip()],
+                }
+                provided_fields = {"price"}
+                if in_stock_value:
+                    product["in_stock"] = in_stock_value in {"true", "1", "yes", "available"}
+                    provided_fields.add("in_stock")
+                quantity = values.get("stock_quantity", "")
+                if quantity:
+                    product["stock_quantity"] = int(quantity)
+                    product["in_stock"] = int(quantity) > 0
+                    provided_fields.add("stock_quantity")
+                    if in_stock_value and product["in_stock"] != (
+                        in_stock_value in {"true", "1", "yes", "available"}
+                    ):
+                        raise ValueError(f"Stock quantity and availability conflict on CSV row {row_number}.")
+                elif "in_stock" not in product:
+                    product["in_stock"] = True
+                Product(**product)
+                product["_provided_fields"] = provided_fields
+                imported.append(product)
+            if not imported:
+                raise ValueError("The CSV contains no products.")
+        except (UnicodeDecodeError, csv.Error, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid catalog CSV: {exc}") from exc
+
+        business_id = user["business_id"]
+        business = rt.platform.business(business_id)
+        if business is None:
+            raise HTTPException(status_code=404, detail="Merchant not found.")
+        products_by_name = {
+            product.name.casefold(): {
+                "name": product.name,
+                "price": product.price,
+                "unit": product.unit,
+                "aliases": product.aliases,
+                "in_stock": product.in_stock,
+                "stock_quantity": product.stock_quantity,
+            }
+            for product in business.products
+        }
+        inventory_by_name = {
+            item["product_name"].casefold(): item["quantity"]
+            for item in rt.platform.inventory(business_id)
+        }
+        stock_updates: list[dict] = []
+        conflicts_created = 0
+        conflicts_updated = 0
+        try:
+            for incoming in imported:
+                provided_fields = incoming.pop("_provided_fields")
+                product_key = incoming["name"].casefold()
+                existing = products_by_name.get(product_key)
+                if existing is None:
+                    products_by_name[product_key] = incoming
+                    if "stock_quantity" in provided_fields:
+                        stock_updates.append(incoming)
+                    continue
+
+                current_stock = inventory_by_name.get(
+                    product_key,
+                    existing.get("stock_quantity"),
+                )
+                conflict_current: dict = {}
+                conflict_incoming: dict = {}
+                if incoming["price"] != existing["price"]:
+                    conflict_current["price"] = existing["price"]
+                    conflict_incoming["price"] = incoming["price"]
+                if (
+                    "stock_quantity" in provided_fields
+                    and current_stock is not None
+                    and incoming["stock_quantity"] != current_stock
+                ):
+                    conflict_current["stock_quantity"] = current_stock
+                    conflict_incoming["stock_quantity"] = incoming["stock_quantity"]
+                elif (
+                    "in_stock" in provided_fields
+                    and "stock_quantity" not in provided_fields
+                    and incoming["in_stock"] != existing["in_stock"]
+                ):
+                    conflict_current["in_stock"] = existing["in_stock"]
+                    conflict_incoming["in_stock"] = incoming["in_stock"]
+                conflicting_fields = set(conflict_current)
+                if conflicting_fields:
+                    _, created = rt.platform.record_catalog_conflict(
+                        business_id,
+                        product_name=existing["name"],
+                        current=conflict_current,
+                        incoming=conflict_incoming,
+                        source="CSV import",
+                    )
+                    if created:
+                        conflicts_created += 1
+                    else:
+                        conflicts_updated += 1
+
+                merged = {**existing, "unit": incoming["unit"], "aliases": incoming["aliases"]}
+                if "price" in provided_fields and "price" not in conflicting_fields:
+                    merged["price"] = incoming["price"]
+                if "stock_quantity" in provided_fields:
+                    if "stock_quantity" not in conflicting_fields:
+                        merged["stock_quantity"] = incoming["stock_quantity"]
+                        merged["in_stock"] = incoming["in_stock"]
+                        stock_updates.append({**incoming, "name": existing["name"]})
+                elif "in_stock" in provided_fields and "in_stock" not in conflicting_fields:
+                    merged["in_stock"] = incoming["in_stock"]
+                products_by_name[product_key] = merged
+
+            rt.platform.save_catalog(
+                business_id,
+                products=list(products_by_name.values()),
+                info=business.info,
+            )
+            for product in stock_updates:
+                if "stock_quantity" in product:
+                    rt.platform.set_inventory(
+                        business_id,
+                        product["name"],
+                        product["stock_quantity"],
+                        "Catalog CSV import",
+                    )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        updated_business = rt.platform.business(business_id)
+        if updated_business:
+            rt.businesses[business_id] = updated_business
+            if rt.default_business.id == business_id:
+                rt.default_business = updated_business
+        return {
+            "status": "imported",
+            "products_imported": len(imported),
+            "conflicts_created": conflicts_created,
+            "conflicts_updated": conflicts_updated,
+            "merge_mode": "upsert",
+        }
+
+    @app.get("/api/catalog/export")
+    def export_catalog(request: Request):
+        user = _current_user(request, rt)
+        business = rt.platform.business(user["business_id"])
+        if business is None:
+            raise HTTPException(status_code=404, detail="Merchant not found.")
+        inventory = {
+            item["product_name"].casefold(): item["quantity"]
+            for item in rt.platform.inventory(business.id)
+        }
+
+        def safe_cell(value: object) -> str:
+            text = str(value)
+            return f"'{text}" if text.lstrip().startswith(("=", "+", "-", "@")) else text
+
+        output = io.StringIO(newline="")
+        writer = csv.writer(output)
+        writer.writerow(["name", "price", "unit", "aliases", "in_stock", "stock_quantity"])
+        for product in business.products:
+            quantity = inventory.get(product.name.casefold(), product.stock_quantity)
+            writer.writerow(
+                [
+                    safe_cell(product.name),
+                    product.price,
+                    safe_cell(product.unit),
+                    safe_cell("|".join(product.aliases)),
+                    str(product.in_stock).lower(),
+                    "" if quantity is None else quantity,
+                ]
+            )
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="hermes-catalog.csv"'},
+        )
+
+    @app.patch("/api/catalog/conflicts/{conflict_id}")
+    def resolve_catalog_conflict(
+        conflict_id: str,
+        req: CatalogConflictResolutionRequest,
+        request: Request,
+    ):
+        user = _current_user(request, rt)
+        try:
+            result = rt.platform.resolve_catalog_conflict(
+                user["business_id"],
+                conflict_id,
+                req.resolution,
+            )
+        except (KeyError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if result is None:
+            raise HTTPException(status_code=404, detail="Catalog conflict not found or already resolved.")
+        if result["status"] != "stale":
+            business = rt.platform.business(user["business_id"])
+            if business:
+                rt.businesses[business.id] = business
+                if rt.default_business.id == business.id:
+                    rt.default_business = business
+        return result
 
     @app.put("/api/inventory")
     def update_inventory(req: InventoryAdjustmentRequest, request: Request):
@@ -728,13 +1038,39 @@ def create_app(
     @app.patch("/api/bookings/{booking_id}")
     def update_booking(booking_id: str, req: BookingStatusRequest, request: Request):
         user = _require_entitlement(request, rt, "Bookings")
+        changes = {
+            "status": req.status,
+            "service": req.service,
+            "customer_name": req.customer_name,
+            "customer_phone": req.customer_phone,
+            "duration_minutes": req.duration_minutes,
+            "notes": req.notes,
+        }
+        edits_details = any(
+            value is not None
+            for value in (req.service, req.customer_name, req.customer_phone, req.starts_at, req.duration_minutes, req.notes)
+        )
+        if req.starts_at is not None:
+            if req.starts_at.tzinfo is None or req.starts_at.utcoffset() is None:
+                raise HTTPException(status_code=400, detail="Booking time must include a timezone")
+            starts_at = req.starts_at.astimezone(timezone.utc).timestamp()
+            if starts_at <= datetime.now(timezone.utc).timestamp():
+                raise HTTPException(status_code=400, detail="Booking must be in the future")
+            changes["starts_at"] = starts_at
         try:
-            updated = rt.platform.update_booking_status(user["business_id"], booking_id, req.status)
+            updated = rt.platform.update_booking(
+                user["business_id"],
+                booking_id,
+                **{key: value for key, value in changes.items() if value is not None},
+            )
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        if not updated:
+            conflict = "another confirmed booking" in str(exc).casefold()
+            raise HTTPException(status_code=409 if conflict else 400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail="Customer data encryption is not configured") from exc
+        if updated is None:
             raise HTTPException(status_code=404, detail="Booking not found")
-        return {"status": "updated"}
+        return updated if edits_details else {"status": "updated"}
 
     @app.post("/api/campaigns", status_code=201)
     def create_campaign(req: CampaignRequest, request: Request):

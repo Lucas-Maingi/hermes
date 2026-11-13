@@ -46,7 +46,7 @@ rt = get_runtime()
 business = rt.default_business
 
 st.title("Hermes")
-st.caption(f"WhatsApp AI commerce & support agent - demo shop: **{business.name}**")
+st.caption(f"WhatsApp AI commerce & support agent - workspace: **{business.name}**")
 
 providers = f"LLM: `{type(rt.llm).__name__}` · M-Pesa: `{type(rt.mpesa).__name__}`"
 st.caption(providers + "  (real providers activate automatically when credentials are set)")

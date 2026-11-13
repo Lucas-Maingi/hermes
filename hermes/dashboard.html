@@ -3,22 +3,48 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hermes | Merchant workspace</title>
+  <meta name="description" content="Manage WhatsApp customer conversations, orders, stock, and M-Pesa payments in one merchant workspace.">
+  <title>Hermes | WhatsApp commerce workspace</title>
   <style>
     :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#132b3a;background:#f4f7f8;font-synthesis:none;--ink:#132b3a;--sub:#72818a;--line:#e4eaec;--green:#16a36a;--mint:#e7f7ee;--nav:#102d3a}
-    *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}
+    *{box-sizing:border-box} [hidden]{display:none!important} body{margin:0}button,input,textarea,select{font:inherit}
     button{border:0;border-radius:10px;padding:10px 15px;background:var(--green);color:white;font-weight:650;cursor:pointer;transition:transform .15s,background .15s}
     button:hover{background:#128658;transform:translateY(-1px)}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #37c98b55;outline-offset:2px}
     button.secondary{background:#edf3f4;color:#244451}button.secondary:hover{background:#e1ebed}button.danger{background:#a83232}
     input,textarea,select{width:100%;border:1px solid #dce5e7;border-radius:10px;padding:11px 12px;background:white;color:var(--ink)}
     textarea{min-height:110px;resize:vertical}label{display:grid;gap:7px;color:#415762;font-size:13px;font-weight:600}
-    .auth{max-width:1080px;margin:6vh auto;padding:clamp(22px,4vw,48px);display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(24px,5vw,64px);align-items:center;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 70px #112e3a12}
-    .auth-copy h1{font-size:clamp(32px,5vw,54px);line-height:1.04;letter-spacing:-2px;margin:14px 0}.auth-copy>p{font-size:16px;line-height:1.7;max-width:520px;color:#52666e}
-    .landing-kicker{display:inline-flex;padding:7px 11px;border-radius:99px;background:#e8f7ef;color:#18734d;font-size:12px;font-weight:750}
-    .landing-features{display:grid;gap:12px;margin:24px 0}.landing-feature{display:flex;gap:12px;align-items:flex-start;color:#52666e;font-size:13px;line-height:1.55}.landing-feature b{display:block;color:var(--ink);font-size:14px}
-    .feature-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:11px;background:#e8f7ef;color:#168356;font-weight:800}
-    .auth-panel{padding:26px;border:1px solid var(--line);border-radius:18px;background:#fbfdfc}.auth-panel h2{margin-top:12px}
+    .auth{max-width:1240px;margin:0 auto;padding:22px clamp(20px,5vw,64px) 72px}
+    .site-nav{display:flex;justify-content:space-between;align-items:center;min-height:54px}
+    .site-brand{font-size:25px;font-weight:850;letter-spacing:-1.3px;color:var(--nav)}
+    .site-brand b{color:var(--green)}
+    .site-links{display:flex;align-items:center;gap:26px}
+    .site-links a,.site-footer a{color:#52666e;text-decoration:none;font-size:13px;font-weight:650}
+    .site-links a:hover,.site-footer a:hover{color:#128658}
+    .site-links button{padding:9px 14px}
+    .auth-main{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(350px,.72fr);gap:clamp(42px,8vw,112px);align-items:center;padding:clamp(64px,10vh,110px) 0 74px}
+    .auth-copy h1{max-width:690px;font-size:clamp(42px,6.2vw,72px);line-height:1.02;letter-spacing:-3.8px;margin:18px 0}
+    .auth-copy>p{font-size:17px;line-height:1.75;max-width:590px;color:#52666e}
+    .landing-kicker{display:inline-flex;padding:8px 12px;border-radius:99px;background:#e5f5ec;color:#18734d;font-size:12px;font-weight:750}
+    .hero-actions{display:flex;gap:12px;align-items:center;margin:26px 0 20px}
+    .hero-actions button{padding:13px 18px}
+    .hero-proof{display:flex;gap:18px;flex-wrap:wrap;color:#60737a;font-size:12px}
+    .hero-proof span:before{content:"✓";color:var(--green);font-weight:800;margin-right:6px}
+    .auth-panel{padding:28px;border:1px solid #e1e9e5;border-radius:18px;background:#fff;box-shadow:0 22px 65px #183d3012}
+    .auth-panel h2{margin:12px 0 7px;font-size:22px}
+    .auth-panel .muted{margin:0 0 20px}
     .auth-terms{margin:14px 0 0;font-size:11px;line-height:1.55;color:var(--sub)}
+    .auth .hint a{color:#128658;font-weight:700}
+    .landing-details{display:grid;gap:18px}
+    .landing-section-head{max-width:650px;margin-bottom:8px}
+    .landing-section-head h2{font-size:clamp(28px,4vw,42px);letter-spacing:-1.7px;line-height:1.1;margin:10px 0}
+    .landing-section-head p{color:#60737a;line-height:1.7}
+    .landing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .landing-card{padding:23px;border:1px solid var(--line);border-radius:16px;background:#fff}
+    .landing-card .feature-icon{margin-bottom:16px}
+    .landing-card h3{margin:0 0 8px;font-size:16px}
+    .landing-card p{margin:0;color:#60737a;font-size:13px;line-height:1.65}
+    .landing-note{padding:18px 20px;border-radius:14px;background:#eaf5ee;color:#365c49;font-size:13px;line-height:1.65}
+    .site-footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:24px;border-top:1px solid var(--line);color:#72818a;font-size:12px}
     .auth h1{margin:14px 0 6px}.muted{color:var(--sub);font-size:14px}.stack{display:grid;gap:15px}.row{display:flex;gap:10px;align-items:center}
     .app{display:none;min-height:100vh}.sidebar{width:252px;background:var(--nav);color:white;padding:24px 15px;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;z-index:5}
     .brand{font-size:24px;font-weight:850;letter-spacing:-1px;padding:0 13px 22px;color:white}.brand b{color:#4dd38d}.brand small{display:block;color:#a8bec7;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
@@ -34,6 +60,7 @@
     .metric{font-size:30px;font-weight:780;letter-spacing:-1.3px;margin:9px 0 3px}.metric-label{font-size:12px;color:var(--sub);font-weight:600}.metric-foot{font-size:11px;color:#71838b}
     .content{display:grid;gap:16px}.section{display:none}.section.active{display:grid;gap:17px}
     .section-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px}.section-heading h2{font-size:24px;margin:5px 0}.section-heading p{margin:0}
+    .booking-filters{display:flex;gap:10px;flex-wrap:wrap;min-width:min(100%,520px)}.booking-filters label{min-width:145px;flex:1}
     table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #edf1f2;vertical-align:middle}th{color:#7a8a91;font-size:10px;letter-spacing:.7px;text-transform:uppercase}tbody tr:hover{background:#f8fbfa}
     .badge{border-radius:99px;background:var(--mint);color:#18734d;padding:5px 9px;font-size:11px;font-weight:650;white-space:nowrap}.badge.warn{background:#fff2d8;color:#825d12}.badge.neutral{background:#edf2f4;color:#52666e}
     .notice{padding:12px 14px;border-radius:11px;background:#e8f6ee;color:#315b43}.notice.error{background:#fff0ee;color:#8f2f28}
@@ -50,50 +77,83 @@
     .inbox-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(290px,.7fr);gap:16px}.summary-box{padding:14px;border-radius:12px;background:#f4f8f7;margin-bottom:12px}
     .message-list{max-height:520px;overflow:auto;display:grid;gap:10px}.message-bubble{padding:12px 14px;border-radius:13px;background:#f3f6f7;max-width:86%;font-size:13px;line-height:1.55}.message-bubble.agent{background:#e7f7ee;justify-self:end}.message-meta{font-size:10px;color:#71838b;margin-bottom:5px}
     @media(max-width:980px){.sidebar{width:100%;position:static;padding:12px}.brand{padding:0 8px 12px}.sidebar nav{display:flex;overflow:auto}.nav-label,.sidebar-foot{display:none}.nav{width:auto;white-space:nowrap}.main{margin:0;padding:22px}.mini-grid,.inbox-layout{grid-template-columns:1fr}}
-    @media(max-width:750px){.auth{grid-template-columns:1fr;margin:18px auto;padding:22px}.auth-copy h1{font-size:38px;letter-spacing:-1.3px}.auth-panel{padding:20px}}
+    @media(max-width:900px){.auth-main{grid-template-columns:minmax(0,1fr) minmax(310px,.8fr);gap:34px}.auth-copy h1{font-size:clamp(38px,6vw,58px);letter-spacing:-2.7px}}
+    @media(max-width:750px){.auth{padding:14px 20px 44px}.auth-main{grid-template-columns:1fr;padding:48px 0}.auth-copy h1{font-size:42px;letter-spacing:-1.8px}.auth-panel{padding:22px}.site-links a{display:none}.landing-grid{grid-template-columns:1fr}}
     @media(max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid{grid-template-columns:1fr}.span{grid-column:auto}.top{align-items:flex-start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.section-heading{align-items:flex-start;flex-direction:column}.hero-actions{flex-wrap:wrap}.main{padding:16px}.grid{gap:9px}.card{padding:16px}.metric{font-size:25px}}
   </style>
 </head>
 <body>
   <section id="auth" class="auth">
-    <div class="auth-copy">
-      <span class="landing-kicker">WhatsApp commerce, organized</span>
-      <h1>Turn customer chats into confident next steps.</h1>
-      <p>Give customers quick, grounded answers, capture orders, collect M-Pesa payments, and bring a person in when needed.</p>
-      <div class="landing-features">
-        <div class="landing-feature"><span class="feature-icon">01</span><div><b>Answer from your business knowledge</b>Use your product catalog and FAQs, with a human handoff when the assistant needs help.</div></div>
-        <div class="landing-feature"><span class="feature-icon">02</span><div><b>Keep orders and payments visible</b>Follow conversations, order status, Daraja callbacks, and staff requests from one workspace.</div></div>
-        <div class="landing-feature"><span class="feature-icon">03</span><div><b>Try it before connecting a live number</b>Start with the simulator, then follow the guided steps for WhatsApp and M-Pesa setup.</div></div>
+    <header class="site-nav">
+      <a class="site-brand" href="/" aria-label="Hermes home">hermes<b>.</b></a>
+      <nav class="site-links" aria-label="Main navigation">
+        <a href="#features">Platform</a><a href="#catalog-sync">Catalog sync</a><a href="#how-it-works">How it works</a>
+        <button id="landingSignIn" class="secondary" type="button">Sign in</button>
+      </nav>
+    </header>
+    <div class="auth-main">
+      <div class="auth-copy">
+        <span class="landing-kicker">WhatsApp commerce, built for Kenyan businesses</span>
+        <h1>Turn conversations into customers.</h1>
+        <p>Answer product questions, capture orders, track stock, and follow M-Pesa payments from one calm, clear workspace.</p>
+        <div class="hero-actions">
+          <button id="heroStart" type="button">Create your workspace</button>
+          <button class="secondary" data-scroll="features" type="button">Explore the platform</button>
+        </div>
+        <div class="hero-proof"><span>Start without provider credentials</span><span>Connect your own WhatsApp and Daraja accounts</span><span>Keep control of your catalog</span></div>
       </div>
-      <p class="hint">New workspace: verify your email to activate a 7-day Premium trial, then keep your workspace on the free plan. Premium renews monthly through a customer-authorized M-Pesa prompt.</p>
+      <div class="auth-panel" id="authPanel">
+        <span class="eyebrow">Get started</span>
+        <h2 id="authTitle">Create your workspace</h2>
+        <p class="muted" id="authDescription">Set up your business account. Connect channels and payments when you’re ready.</p>
+        <form id="loginForm" class="stack" hidden>
+          <label>Email<input name="email" type="email" autocomplete="username" required></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+          <button>Sign in</button>
+        </form>
+        <form id="registerForm" class="stack">
+          <label id="inviteLabel" hidden>Invitation code<input name="invite_code" autocomplete="off"></label>
+          <label>Business name<input name="name" autocomplete="organization" required maxlength="120" placeholder="e.g. Acme Store"></label>
+          <label>Work email<input name="email" type="email" autocomplete="email" required placeholder="you@business.com"></label>
+          <label>Mobile number <span class="hint">(optional for now; SMS verification is not enabled yet)</span><input name="owner_phone" type="tel" autocomplete="tel" maxlength="40" placeholder="+254 7XX XXX XXX"></label>
+          <label>Password <span class="hint">At least 12 characters</span><input name="password" type="password" autocomplete="new-password" minlength="12" required></label>
+          <button id="registerButton">Create workspace &amp; verify email</button>
+        </form>
+        <form id="verifyForm" class="stack" hidden>
+          <p class="muted">Confirm your email address to activate the workspace.</p>
+          <button>Verify email and continue</button>
+        </form>
+        <form id="resendForm" class="stack" hidden>
+          <label>Email address<input name="email" type="email" autocomplete="email" required></label>
+          <button class="secondary">Resend verification email</button>
+        </form>
+        <p id="authMessage" class="hint" aria-live="polite"></p>
+        <button id="toggleAuth" class="secondary" type="button">Already have an account? Sign in</button>
+        <p class="auth-terms">Email verification is required. WhatsApp and M-Pesa credentials are added later in your private workspace and encrypted at rest.</p>
+      </div>
     </div>
-    <div class="auth-panel">
-      <div class="brand" style="padding:0;color:#132b3a">hermes<b style="color:#16a36a">.</b><small style="color:#72818a">merchant workspace</small></div>
-      <h2 id="authTitle">Welcome back</h2>
-      <p class="muted" id="authDescription">Sign in to your merchant workspace.</p>
-      <form id="loginForm" class="stack">
-        <label>Email<input name="email" type="email" autocomplete="username" required></label>
-        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-        <button>Sign in</button>
-      </form>
-      <form id="registerForm" class="stack" hidden>
-        <label id="inviteLabel">Merchant invitation code<input name="invite_code" autocomplete="off"></label>
-        <label>Business name<input name="name" required maxlength="120"></label>
-        <label>Owner email<input name="email" type="email" autocomplete="email" required></label>
-        <label>Password (at least 12 characters)<input name="password" type="password" autocomplete="new-password" minlength="12" required></label>
-        <button>Start my free 7-day Premium trial</button>
-      </form>
-      <form id="verifyForm" class="stack" hidden>
-        <p class="muted">Confirm your email address to activate the workspace.</p>
-        <button>Verify email and continue</button>
-      </form>
-      <form id="resendForm" class="stack" hidden>
-        <label>Email address<input name="email" type="email" autocomplete="email" required></label>
-        <button class="secondary">Resend verification email</button>
-      </form>
-      <p id="authMessage" class="hint" aria-live="polite"></p>
-      <button id="toggleAuth" class="secondary">Create a free trial workspace</button>
-      <p class="auth-terms">By creating a workspace, you confirm that you are authorized to represent this business. WhatsApp and M-Pesa connections require separate provider setup and approval.</p>
+    <div class="landing-details">
+      <section id="features">
+        <div class="landing-section-head"><span class="eyebrow">One connected workspace</span><h2>Make every customer conversation easier to act on.</h2><p>Keep the tools focused on real business operations: grounded answers, visible orders, tracked stock, and useful reporting.</p></div>
+        <div class="landing-grid">
+          <article class="landing-card"><span class="feature-icon">01</span><h3>AI that knows your business</h3><p>Use your catalog and approved business information for product and policy answers. Route uncertain requests to your team.</p></article>
+          <article class="landing-card"><span class="feature-icon">02</span><h3>Orders, stock and payments</h3><p>Review order activity, stock updates, payment callbacks, and staff follow-ups without switching between customer threads.</p></article>
+          <article class="landing-card"><span class="feature-icon">03</span><h3>Activity you can measure</h3><p>See conversations, captured orders, confirmed payments, revenue, and campaign-attributed sales from recorded activity.</p></article>
+        </div>
+      </section>
+      <section id="catalog-sync">
+        <div class="landing-section-head"><span class="eyebrow">Your catalog stays yours</span><h2>Bring your existing products and stock data.</h2><p>Import and export a standard CSV catalog, or manage products directly in Hermes. No forced migration to get started.</p></div>
+        <div class="landing-note">Catalog CSV supports product name, price, unit, aliases, availability, and stock quantity. Imports safely merge by product name. Direct two-way integrations depend on each inventory provider’s API; we’ll prioritize connectors around the systems your business already uses.</div>
+      </section>
+      <section id="how-it-works">
+        <div class="landing-section-head"><span class="eyebrow">Start in a few steps</span><h2>Set up at your pace.</h2></div>
+        <div class="landing-grid">
+          <article class="landing-card"><h3>1. Create and verify</h3><p>Set up your merchant workspace with a business email and password.</p></article>
+          <article class="landing-card"><h3>2. Add your business data</h3><p>Import your catalog or add products, inventory, and answers to common questions.</p></article>
+          <article class="landing-card"><h3>3. Connect your channels</h3><p>Add your own Meta WhatsApp and M-Pesa Daraja credentials when your accounts and callbacks are ready.</p></article>
+        </div>
+      </section>
+      <footer class="site-footer"><span>Hermes · Customer conversations and commerce operations</span><a href="#authPanel" data-focus-signup>Create a workspace</a></footer>
     </div>
   </section>
 
@@ -139,6 +199,10 @@
             <div class="card"><div class="row"><div><div class="eyebrow">Commerce snapshot</div><h2 style="margin-top:7px">From conversation to payment</h2></div><span class="badge neutral">All time</span></div><div id="commerceFunnel"></div></div>
             <div class="card"><div class="eyebrow">Setup checklist</div><h2 style="margin-top:7px">Ready for your first customer?</h2><div id="setupChecklist"></div></div>
           </div>
+          <div class="mini-grid">
+            <div class="card"><div class="eyebrow">Catalog analytics · latest 100 conversations</div><h2 style="margin-top:7px">Recent product sales</h2><div id="topProducts"></div></div>
+            <div class="card"><div class="eyebrow">Stock health</div><h2 style="margin-top:7px">Inventory to review</h2><div id="stockAlerts"></div></div>
+          </div>
           <div class="card"><div class="row"><div><div class="eyebrow">Latest activity</div><h2 style="margin-top:6px">Recent conversations</h2></div><button class="secondary right" data-go="orders">View inbox</button></div><div id="recentOrders"></div></div>
         </section>
         <section id="simulator" class="section">
@@ -172,6 +236,7 @@
         </section>
         <section id="bookings" class="section">
           <div class="section-heading"><div><div class="eyebrow">Appointments</div><h2>Bookings</h2><p class="muted">Create and manage bookings. Times are entered in your local timezone.</p></div></div>
+          <div class="grid" id="bookingMetrics"></div>
           <div class="card">
             <h2>Customer self-booking hours</h2>
             <p class="hint">Use weekday keys 0-6 (Monday-Sunday) and 24-hour times, e.g. {"0":{"open":"09:00","close":"17:00"}}. Customers can choose 30-minute slots.</p>
@@ -182,9 +247,20 @@
             </form>
             <p class="hint">Public booking link: <a id="publicBookingLink" href="#" target="_blank" rel="noopener noreferrer">Configure business hours to enable</a></p>
           </div>
-          <div class="card"><div id="bookingTable"></div></div>
           <div class="card">
-            <h2>Create a booking</h2>
+            <div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:14px">
+              <h2 style="margin:0">Appointment schedule</h2>
+              <div class="booking-filters">
+                <label>Search<input id="bookingSearch" type="search" placeholder="Customer, phone, service"></label>
+                <label>Date<input id="bookingDate" type="date"></label>
+                <label>Status<select id="bookingStatusFilter"><option value="all">All statuses</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+              </div>
+            </div>
+            <div id="bookingTable"></div>
+          </div>
+          <div class="card">
+            <h2 id="bookingFormTitle">Create an appointment</h2>
+            <p id="bookingEditNotice" class="hint" hidden>Editing an existing appointment. Saving checks availability before applying changes.</p>
             <form id="bookingForm" class="form-grid">
               <label>Service<input name="service" required maxlength="120" placeholder="e.g. Consultation"></label>
               <label>Customer name<input name="customer_name" required maxlength="120"></label>
@@ -192,9 +268,9 @@
               <label>Start time<input name="starts_at" type="datetime-local" required></label>
               <label>Duration (minutes)<input name="duration_minutes" type="number" min="5" max="1440" value="60" required></label>
               <label class="span">Notes<textarea name="notes" maxlength="2000"></textarea></label>
-              <div class="span"><button>Create booking</button></div>
+              <div class="span actions"><button id="bookingSubmit">Create appointment</button><button id="cancelBookingEdit" class="secondary" type="button" hidden>Stop editing</button></div>
             </form>
-            <p class="hint">Confirmed bookings block overlapping times for all services. Public self-booking requires configured hours. Deposits, calendar sync, and WhatsApp reminders are not connected.</p>
+            <p class="hint">Confirmed appointments block overlapping times. Public self-booking requires configured hours. Deposits, calendar sync, and WhatsApp reminders are not connected.</p>
           </div>
         </section>
         <section id="inventory" class="section">
@@ -228,6 +304,22 @@
         </section>
         <section id="catalog" class="section">
           <div class="card"><h2>Product catalog</h2><div id="products"></div></div>
+          <div class="card">
+            <div class="row"><h2>Updates to review</h2><span class="badge warn" id="catalogConflictCount">0 pending</span></div>
+            <p class="muted">Price or stock changes from an import are held here until you confirm which value is correct.</p>
+            <div id="catalogConflicts" aria-live="polite"></div>
+          </div>
+          <div class="card">
+            <h2>Bring your existing catalog</h2>
+            <p class="muted">Import or export CSV without migrating your entire inventory system. Imports merge by product name and keep products that are not in the file.</p>
+            <form id="catalogImportForm" class="row">
+              <label>Catalog CSV<input name="file" type="file" accept=".csv,text/csv" required></label>
+              <button>Import and merge</button>
+              <a class="secondary" style="padding:10px 15px;border-radius:10px;text-decoration:none;font-weight:650" href="/api/catalog/export">Export CSV</a>
+            </form>
+            <p class="hint">Columns: <code>name</code>, <code>price</code>, optional <code>unit</code>, <code>aliases</code> (use | between aliases), <code>in_stock</code>, and <code>stock_quantity</code>. For live two-way sync, tell us which stock or commerce system you use so we can build and validate the right connector.</p>
+            <div id="catalogImportStatus" class="hint" role="status" aria-live="polite"></div>
+          </div>
           <div class="card">
             <h2>Add a product</h2>
             <form id="productForm" class="form-grid">
@@ -349,6 +441,7 @@
     let simulatorPhone = "";
     let inboxFilter = "all";
     let verificationToken = new URLSearchParams(location.search).get("verify");
+    let authMode = "signup";
     async function api(path, options = {}) {
       const headers = options.body instanceof FormData ? {...(options.headers || {})} : {"Content-Type":"application/json", ...(options.headers || {})};
       const response = await fetch(path, {credentials:"same-origin", ...options, headers});
@@ -378,6 +471,53 @@
       });
       $("#allOrders").innerHTML=conversationTable(filtered,dashboard.business.currency);
       $("#inboxCount").textContent=`${filtered.length} conversation${filtered.length===1?"":"s"}`;
+    }
+    function renderBookings() {
+      if (!dashboard) return;
+      const bookings=dashboard.bookings;
+      const localDayKey=date=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+      const today=localDayKey(new Date());
+      const todayBookings=bookings.filter(b=>localDayKey(new Date(b.starts_at*1000))===today);
+      const upcoming=bookings.filter(b=>b.status==="confirmed"&&b.starts_at>Date.now()/1000);
+      $("#bookingMetrics").innerHTML=[
+        ["Today",todayBookings.length,"All appointments scheduled today"],
+        ["Upcoming",upcoming.length,"Confirmed appointments ahead"],
+        ["Needs follow-up",bookings.filter(b=>b.status==="confirmed"&&b.starts_at+ b.duration_minutes*60<Date.now()/1000).length,"Past appointments still marked confirmed"]
+      ].map(([label,value,detail])=>`<div class="card metric-card"><div class="metric-label">${esc(label)}</div><div class="metric">${value}</div><div class="metric-foot">${esc(detail)}</div></div>`).join("");
+      const needle=$("#bookingSearch").value.trim().toLowerCase();
+      const date=$("#bookingDate").value;
+      const status=$("#bookingStatusFilter").value;
+      const rows=bookings.filter(b=>{
+        const search=`${b.customer_name} ${b.customer_phone} ${b.service} ${b.notes}`.toLowerCase();
+        const localDate=localDayKey(new Date(b.starts_at*1000));
+        return search.includes(needle)&&(!date||localDate===date)&&(status==="all"||b.status===status);
+      });
+      $("#bookingTable").innerHTML=rows.length?`<div style="overflow:auto"><table><thead><tr><th>Date & time</th><th>Service</th><th>Customer</th><th>Phone</th><th>Duration</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${rows.map(b=>`<tr><td>${new Date(b.starts_at*1000).toLocaleString()}</td><td>${esc(b.service)}</td><td>${esc(b.customer_name)}</td><td>${esc(b.customer_phone)}</td><td>${b.duration_minutes} min</td><td><span class="badge ${b.status==="confirmed"?"":"neutral"}">${esc(b.status)}</span></td><td>${esc(b.notes||"—")}</td><td><div class="actions"><button class="secondary" data-edit-booking="${esc(b.id)}">Edit</button>${b.status==="confirmed"?`<button class="secondary" data-booking="${esc(b.id)}" data-status="completed">Complete</button><button class="danger" data-booking="${esc(b.id)}" data-status="cancelled">Cancel</button>`:b.status==="cancelled"?`<button class="secondary" data-booking="${esc(b.id)}" data-status="confirmed">Reconfirm</button>`:"—"}</div></td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No appointments match these filters.</div>';
+    }
+    function startBookingEdit(booking) {
+      const form=$("#bookingForm");
+      form.dataset.editId=booking.id;
+      form.elements.service.value=booking.service;
+      form.elements.customer_name.value=booking.customer_name;
+      form.elements.customer_phone.value=booking.customer_phone;
+      form.elements.starts_at.value=new Date(booking.starts_at*1000-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+      form.elements.duration_minutes.value=booking.duration_minutes;
+      form.elements.notes.value=booking.notes;
+      $("#bookingFormTitle").textContent="Edit appointment";
+      $("#bookingEditNotice").hidden=false;
+      $("#bookingSubmit").textContent="Save appointment";
+      $("#cancelBookingEdit").hidden=false;
+      form.scrollIntoView({behavior:"smooth",block:"center"});
+    }
+    function stopBookingEdit() {
+      const form=$("#bookingForm");
+      delete form.dataset.editId;
+      form.reset();
+      form.elements.duration_minutes.value="60";
+      $("#bookingFormTitle").textContent="Create an appointment";
+      $("#bookingEditNotice").hidden=true;
+      $("#bookingSubmit").textContent="Create appointment";
+      $("#cancelBookingEdit").hidden=true;
     }
     function render(data) {
       dashboard=data;
@@ -432,6 +572,24 @@
       const ordersPct=m.total_conversations?Math.round(m.orders_captured/m.total_conversations*100):0;
       const paidPct=m.orders_captured?Math.round(m.orders_paid/m.orders_captured*100):0;
       $("#commerceFunnel").innerHTML=`<div class="progress-row"><span>Conversations</span><div class="progress"><i style="width:100%"></i></div><b>${m.total_conversations}</b></div><div class="progress-row"><span>Orders captured</span><div class="progress"><i style="width:${ordersPct}%"></i></div><b>${m.orders_captured}</b></div><div class="progress-row"><span>Paid orders</span><div class="progress"><i style="width:${paidPct}%"></i></div><b>${m.orders_paid}</b></div><div class="hint">Matched WhatsApp ad referrals and paid conversions appear in Campaigns.</div>`;
+      const recentSales=new Map();
+      data.conversations.forEach(conversation=>{
+        if(conversation.order?.status!=="paid")return;
+        conversation.order.items.forEach(item=>{
+          const current=recentSales.get(item.name)||{name:item.name,units:0,revenue:0};
+          current.units+=item.quantity;
+          current.revenue+=item.quantity*item.unit_price;
+          recentSales.set(item.name,current);
+        });
+      });
+      const bestSellers=[...recentSales.values()].sort((a,b)=>b.units-a.units).slice(0,5);
+      $("#topProducts").innerHTML=bestSellers.length
+        ?showTable(bestSellers,[{label:"Product",value:item=>item.name},{label:"Units sold",value:item=>item.units},{label:"Paid revenue",value:item=>`${data.business.currency} ${Number(item.revenue).toLocaleString()}`}])
+        :'<div class="empty">Paid product sales will appear here as orders are confirmed.</div>';
+      const lowStock=data.inventory.filter(item=>item.available<=5);
+      $("#stockAlerts").innerHTML=lowStock.length
+        ?showTable(lowStock.slice(0,5),[{label:"Product",value:item=>item.product_name},{label:"On hand",value:item=>item.quantity},{label:"Available",value:item=>item.available}])
+        :data.inventory.length?'<div class="empty">No low-stock items. Counts refresh with workspace activity.</div>':'<div class="empty">Track stock in Inventory to see low-stock alerts.</div>';
       const checks=[
         ["Business catalog",data.business.products.length>0,`${data.business.products.length} products`,"catalog"],
         ["WhatsApp connection",data.integrations.whatsapp_connected,data.integrations.whatsapp_connected?"Number configured":"Connect a number","integrations"],
@@ -455,13 +613,17 @@
       $("#inventoryForm [name=product_name]").innerHTML=data.business.products.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("");
       $("#inventoryForm button").disabled=!data.business.products.length;
       $("#inventoryHistory").innerHTML=showTable(data.inventory_history,[{label:"Product",value:e=>e.product_name},{label:"Change",value:e=>`${e.delta>0?"+":""}${e.delta}`},{label:"Reason",value:e=>e.reason},{label:"When",value:e=>new Date(e.created_at*1000).toLocaleString()}]);
-      $("#bookingTable").innerHTML=data.bookings.length?`<div style="overflow:auto"><table><thead><tr><th>When</th><th>Service</th><th>Customer</th><th>Phone</th><th>Duration</th><th>Status</th><th></th></tr></thead><tbody>${data.bookings.map(b=>`<tr><td>${new Date(b.starts_at*1000).toLocaleString()}</td><td>${esc(b.service)}</td><td>${esc(b.customer_name)}</td><td>${esc(b.customer_phone)}</td><td>${b.duration_minutes} min</td><td>${esc(b.status)}</td><td>${b.status==="confirmed"?`<button class="secondary" data-booking="${esc(b.id)}" data-status="completed">Complete</button> <button class="danger" data-booking="${esc(b.id)}" data-status="cancelled">Cancel</button>`:"—"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No bookings yet.</div>';
+      renderBookings();
       $("#bookingSettingsForm [name=timezone]").value=data.booking_settings.timezone;
       $("#bookingSettingsForm [name=weekly_hours]").value=JSON.stringify(data.booking_settings.weekly_hours,null,2);
       $("#publicBookingLink").href=`${location.origin}/book/${encodeURIComponent(data.business.id)}`;
       $("#publicBookingLink").textContent=data.booking_settings.enabled?`${location.origin}/book/${data.business.id}`:"Configure business hours to enable";
       $("#campaignTable").innerHTML=showTable(data.campaigns,[{label:"Campaign",value:c=>c.name},{label:"Channel",value:c=>c.channel},{label:"Source ID",value:c=>c.external_source_id},{label:"Conversations",value:c=>c.attributed_conversations},{label:"Paid orders",value:c=>c.conversions},{label:"Revenue",value:c=>`${data.business.currency} ${Number(c.revenue).toLocaleString()}`}]);
       $("#products").innerHTML=showTable(data.business.products,[{label:"Product",value:p=>p.name},{label:"Price",value:p=>`${data.business.currency} ${Number(p.price).toLocaleString()}`},{label:"Unit",value:p=>p.unit||"—"},{label:"Availability",value:p=>p.in_stock?"Available":"Out of stock"},{label:"Aliases",value:p=>p.aliases.join(", ")||"—"}]);
+      $("#catalogConflictCount").textContent=`${data.catalog_conflicts.length} pending`;
+      const conflictFieldLabel={price:"Price",stock_quantity:"Stock quantity",in_stock:"Availability"};
+      const conflictValue=(field,value)=>field==="price"?`${data.business.currency} ${Number(value).toLocaleString()}`:field==="in_stock"?(value?"Available":"Out of stock"):(value??"Not tracked");
+      $("#catalogConflicts").innerHTML=data.catalog_conflicts.length?data.catalog_conflicts.map(conflict=>`<div class="summary-box"><div class="row"><b>${esc(conflict.product_name)}</b><span class="badge warn">${esc(conflict.source)} · review needed</span></div><div class="hint" style="margin:8px 0">Imported ${new Date(conflict.created_at*1000).toLocaleString()}</div>${Object.keys(conflict.current).map(field=>`<div class="status-line"><span>${esc(conflictFieldLabel[field]||field)}</span><span>Current: <b>${esc(conflictValue(field,conflict.current[field]))}</b> · Incoming: <b>${esc(conflictValue(field,conflict.incoming[field]))}</b></span></div>`).join("")}<div class="actions" style="margin-top:12px"><button class="secondary" data-conflict="${esc(conflict.id)}" data-resolution="keep_current">Keep current</button><button data-conflict="${esc(conflict.id)}" data-resolution="accept_incoming">Confirm incoming</button></div></div>`).join(""):'<div class="empty">No catalog conflicts need review.</div>';
       $("#factsForm [name=facts]").value=Object.entries(data.business.info).map(([key,value])=>`${key}: ${value}`).join("\n");
       $("#documents").innerHTML=data.documents.length?data.documents.map(d=>`<div class="row" style="padding:10px 0;border-bottom:1px solid #edf1ee"><span>${esc(d.title)} · ${new Date(d.created_at*1000).toLocaleString()}</span><button class="danger right" data-document="${esc(d.id)}">Delete</button></div>`).join(""):'<div class="empty">No documents indexed.</div>';
       $("#integrationStatus").textContent=`WhatsApp: ${data.integrations.whatsapp_connected?"configured":"not configured"}; webhook signature: ${data.integrations.whatsapp_webhook_secured?"configured":"not configured"}; M-Pesa: ${data.integrations.mpesa_connected?"configured":"simulator"}; embeddings: ${data.integrations.embeddings_configured?"enabled with consent":"BM25 only"}. Secrets are never shown.`;
@@ -481,28 +643,72 @@
       showApp();
     }
     async function refresh() { render(await api("/api/dashboard")); }
-    function showVerificationPrompt(message,email=""){
-      $("#loginForm").hidden=true;$("#registerForm").hidden=true;$("#verifyForm").hidden=true;$("#resendForm").hidden=false;
-      $("#resendForm [name=email]").value=email;$("#authTitle").textContent="Verify your email";
-      $("#authDescription").textContent="A verification link is required before you can sign in.";
-      $("#toggleAuth").hidden=false;$("#toggleAuth").textContent="Back to sign in";$("#authMessage").textContent=message;
+    function setAuthMode(mode) {
+      if(mode==="signup"&&!publicConfig.signup_enabled)mode="login";
+      authMode=mode;
+      $("#loginForm").hidden=mode!=="login";
+      $("#registerForm").hidden=mode!=="signup";
+      $("#verifyForm").hidden=mode!=="verify";
+      $("#resendForm").hidden=mode!=="pending";
+      $("#inviteLabel").hidden=!publicConfig.invite_required;
+      $("#registerForm [name=invite_code]").required=publicConfig.invite_required;
+      $("#toggleAuth").hidden=mode==="verify"||!publicConfig.signup_enabled;
+      if(mode==="signup"){
+        $("#authTitle").textContent="Create your workspace";
+        $("#authDescription").textContent="Set up your business account. Connect channels and payments when you’re ready.";
+        $("#toggleAuth").textContent="Already have an account? Sign in";
+      }else if(mode==="login"){
+        $("#authTitle").textContent="Welcome back";
+        $("#authDescription").textContent="Sign in to your merchant workspace.";
+        $("#toggleAuth").textContent="Create your workspace";
+      }else if(mode==="pending"){
+        $("#authTitle").textContent="Check your email";
+        $("#authDescription").textContent="Verify your email address to activate the workspace.";
+        $("#toggleAuth").hidden=!publicConfig.signup_enabled;
+        $("#toggleAuth").textContent="Back to sign in";
+      }else{
+        $("#authTitle").textContent="Verify your email";
+        $("#authDescription").textContent="A verification link is required before you can sign in.";
+      }
     }
-    $("#toggleAuth").addEventListener("click",()=>{const signup=$("#registerForm").hidden;$("#verifyForm").hidden=true;$("#resendForm").hidden=true;$("#registerForm").hidden=!signup;$("#loginForm").hidden=signup;$("#inviteLabel").hidden=!publicConfig.invite_required;$("#registerForm [name=invite_code]").required=publicConfig.invite_required;$("#authTitle").textContent=signup?"Create your workspace":"Welcome back";$("#authDescription").textContent=signup?"Verify your email to start a 7-day Premium trial.":"Sign in to your merchant workspace.";$("#toggleAuth").textContent=signup?"Back to sign in":"Create a free trial workspace";$("#toggleAuth").hidden=false;$("#authMessage").textContent="";});
+    function showVerificationPrompt(message,email="",verificationUrl=""){
+      setAuthMode("pending");
+      $("#resendForm [name=email]").value=email;
+      $("#authMessage").textContent=message;
+      if(verificationUrl){
+        const url=new URL(verificationUrl,location.origin);
+        if(url.origin===location.origin){
+          const link=document.createElement("a");
+          link.href=url.href;
+          link.textContent="Open your local verification link";
+          $("#authMessage").append(document.createElement("br"),link);
+        }
+      }
+    }
+    $("#toggleAuth").addEventListener("click",()=>{setAuthMode(authMode==="signup"?"login":authMode==="login"?"signup":"login");$("#authMessage").textContent="";});
+    $("#landingSignIn").addEventListener("click",()=>{setAuthMode("login");$("#authPanel").scrollIntoView({behavior:"smooth",block:"center"});});
+    $("#heroStart").addEventListener("click",()=>{setAuthMode("signup");$("#authPanel").scrollIntoView({behavior:"smooth",block:"center"});});
+    document.querySelectorAll("[data-scroll]").forEach(link=>link.addEventListener("click",()=>document.getElementById(link.dataset.scroll).scrollIntoView({behavior:"smooth"})));
+    document.querySelectorAll("[data-focus-signup]").forEach(link=>link.addEventListener("click",()=>{setAuthMode("signup");$("#authPanel").scrollIntoView({behavior:"smooth",block:"center"});}));
     $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("/auth/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await refresh();}catch(err){$("#authMessage").textContent=err.message;}});
-    $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/auth/register",{method:"POST",body:JSON.stringify(values)});showVerificationPrompt("Check your inbox for a one-time verification link.",values.email);}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));const button=$("#registerButton");button.disabled=true;button.textContent="Creating workspace…";try{const result=await api("/auth/register",{method:"POST",body:JSON.stringify(values)});const local=result.delivery==="local_development";showVerificationPrompt(local?"Local development only: no email was sent. Use this one-time link to verify your account.":`A one-time verification link was sent to ${values.email}.`,values.email,result.verification_url||"");}catch(err){$("#authMessage").textContent=err.message;}finally{button.disabled=false;button.textContent="Create workspace & verify email";}});
     $("#verifyForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("/auth/verify-email",{method:"POST",body:JSON.stringify({token:verificationToken})});verificationToken=null;history.replaceState(null,"",location.pathname);await refresh();}catch(err){$("#authMessage").textContent=err.message;}});
-    $("#resendForm").addEventListener("submit",async e=>{e.preventDefault();const email=e.target.elements.email.value;try{await api("/auth/verification/resend",{method:"POST",body:JSON.stringify({email})});$("#authMessage").textContent="If that address has an unverified workspace, a new link has been sent.";}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#resendForm").addEventListener("submit",async e=>{e.preventDefault();const email=e.target.elements.email.value;try{const result=await api("/auth/verification/resend",{method:"POST",body:JSON.stringify({email})});if(result.delivery==="local_development")showVerificationPrompt("Local development only: no email was sent. Use this one-time link to verify your account.",email,result.verification_url);else $("#authMessage").textContent="If that address has an unverified workspace, a new link has been sent.";}catch(err){$("#authMessage").textContent=err.message;}});
     $("#logout").addEventListener("click",async()=>{await api("/auth/logout",{method:"POST",body:"{}"});showAuth();});
     document.querySelectorAll(".nav").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".nav,.section").forEach(el=>el.classList.remove("active"));button.classList.add("active");$("#"+button.dataset.section).classList.add("active");}));
     document.querySelectorAll("[data-go]").forEach(button=>button.addEventListener("click",()=>document.querySelector(`.nav[data-section="${button.dataset.go}"]`).click()));
     $("#conversationSearch").addEventListener("input",renderInbox);
+    ["bookingSearch","bookingDate","bookingStatusFilter"].forEach(id=>$("#"+id).addEventListener("input",renderBookings));
     document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{inboxFilter=button.dataset.filter;document.querySelectorAll("[data-filter]").forEach(chip=>chip.classList.toggle("active",chip===button));renderInbox();}));
     $("#simulatorForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));if(values.phone!==simulatorPhone){simulatorConversationId=null;simulatorPhone=values.phone;$("#simulatorTranscript").replaceChildren();}try{const result=await api("/api/simulator/chat",{method:"POST",body:JSON.stringify({...values,conversation_id:simulatorConversationId})});simulatorConversationId=result.conversation_id;$("#simulatorTranscript").insertAdjacentHTML("beforeend",`<div class="card"><b>You</b><p>${esc(values.text)}</p></div><div class="card"><b>Hermes</b><p>${esc(result.reply)}</p>${result.needs_human?'<span class="badge warn">Needs staff follow-up</span>':""}</div>`);e.target.elements.text.value="";await refresh();}catch(err){notice(err.message,true);}});
+    $("#catalogImportForm").addEventListener("submit",async e=>{e.preventDefault();const status=$("#catalogImportStatus");status.textContent="Validating and importing catalog…";try{const result=await api("/api/catalog/import",{method:"POST",body:new FormData(e.target)});const conflicts=result.conflicts_created+result.conflicts_updated;status.textContent=`Imported ${result.products_imported} products. ${conflicts?`${result.conflicts_created} new and ${result.conflicts_updated} existing price or stock conflicts are awaiting review.`:"Non-conflicting updates were applied; products absent from this file were kept."}`;e.target.reset();await refresh();}catch(err){status.textContent=err.message;}});
+    $("#catalogConflicts").addEventListener("click",async e=>{const button=e.target.closest("[data-conflict]");if(!button)return;button.disabled=true;try{const result=await api(`/api/catalog/conflicts/${encodeURIComponent(button.dataset.conflict)}`,{method:"PATCH",body:JSON.stringify({resolution:button.dataset.resolution})});await refresh();notice(result.status==="stale"?"This product changed during review. The latest values are shown; confirm again.":result.status==="accepted"?"Incoming product values confirmed.":"Current product values kept.");}catch(err){button.disabled=false;notice(err.message,true);}});
     $("#productForm").addEventListener("submit",async e=>{e.preventDefault();const form=Object.fromEntries(new FormData(e.target));const product={name:form.name,price:Number(form.price),unit:form.unit,aliases:form.aliases.split(",").map(x=>x.trim()).filter(Boolean),in_stock:e.target.elements.in_stock.checked};try{await api("/api/catalog",{method:"PUT",body:JSON.stringify({products:[...dashboard.business.products,product],info:dashboard.business.info})});e.target.reset();await refresh();notice("Product saved.");}catch(err){notice(err.message,true);}});
     $("#inventoryForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/inventory",{method:"PUT",body:JSON.stringify({...values,quantity:Number(values.quantity)})});e.target.elements.quantity.value="";e.target.elements.reason.value="";await refresh();notice("Stock count updated.");}catch(err){notice(err.message,true);}});
-    $("#bookingForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/bookings",{method:"POST",body:JSON.stringify({...values,starts_at:new Date(values.starts_at).toISOString(),duration_minutes:Number(values.duration_minutes)})});e.target.reset();e.target.elements.duration_minutes.value="60";await refresh();notice("Booking created.");}catch(err){notice(err.message,true);}});
+    $("#bookingForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.target;const values=Object.fromEntries(new FormData(form));const body={...values,starts_at:new Date(values.starts_at).toISOString(),duration_minutes:Number(values.duration_minutes)};try{if(form.dataset.editId){await api(`/api/bookings/${encodeURIComponent(form.dataset.editId)}`,{method:"PATCH",body:JSON.stringify(body)});stopBookingEdit();await refresh();notice("Appointment updated.");}else{await api("/api/bookings",{method:"POST",body:JSON.stringify(body)});stopBookingEdit();await refresh();notice("Appointment created.");}}catch(err){notice(err.message,true);}});
+    $("#cancelBookingEdit").addEventListener("click",stopBookingEdit);
     $("#bookingSettingsForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/bookings/settings",{method:"PUT",body:JSON.stringify({timezone:values.timezone,weekly_hours:JSON.parse(values.weekly_hours)})});await refresh();notice("Booking hours saved.");}catch(err){notice(err.message,true);}});
-    $("#bookingTable").addEventListener("click",async e=>{const button=e.target.closest("[data-booking]");if(!button)return;try{await api(`/api/bookings/${encodeURIComponent(button.dataset.booking)}`,{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});await refresh();notice("Booking updated.");}catch(err){notice(err.message,true);}});
+    $("#bookingTable").addEventListener("click",async e=>{const edit=e.target.closest("[data-edit-booking]");if(edit){const booking=dashboard.bookings.find(item=>item.id===edit.dataset.editBooking);if(booking)startBookingEdit(booking);return;}const button=e.target.closest("[data-booking]");if(!button)return;try{await api(`/api/bookings/${encodeURIComponent(button.dataset.booking)}`,{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});await refresh();notice("Appointment updated.");}catch(err){notice(err.message,true);}});
     $("#campaignForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/campaigns",{method:"POST",body:JSON.stringify(values)});e.target.reset();await refresh();notice("Campaign source saved.");}catch(err){notice(err.message,true);}});
     $("#billingForm").addEventListener("submit",async e=>{e.preventDefault();$("#billingStatus").textContent="Requesting M-Pesa payment...";try{const result=await api("/api/billing/checkout",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});$("#billingStatus").textContent=`${result.message} Amount: KES ${Number(result.amount_kes).toLocaleString()}. Waiting for Daraja confirmation...`;for(let attempt=0;attempt<24;attempt++){await new Promise(resolve=>setTimeout(resolve,5000));const state=await api("/api/billing/status");if(state?.status==="paid"||state?.status==="failed"){await refresh();break;}}}catch(err){$("#billingStatus").textContent=err.message;}});
     $("#templateForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/whatsapp/templates",{method:"POST",body:JSON.stringify({...values,body_parameter_count:Number(values.body_parameter_count),meta_approval_confirmed:e.target.elements.meta_approval_confirmed.checked})});e.target.reset();e.target.elements.language.value="en";e.target.elements.body_parameter_count.value="0";await refresh();notice("Approved template saved.");}catch(err){notice(err.message,true);}});
@@ -520,8 +726,9 @@
     $("#handoffList").addEventListener("click",async e=>{const button=e.target.closest("[data-handoff]");if(!button)return;try{await api(`/api/handoffs/${button.dataset.handoff}`,{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});await refresh();notice("Handoff updated.");}catch(err){notice(err.message,true);}});
     $("#documents").addEventListener("click",async e=>{const button=e.target.closest("[data-document]");if(!button)return;try{await api(`/api/knowledge/documents/${button.dataset.document}`,{method:"DELETE"});await refresh();}catch(err){notice(err.message,true);}});
     $("#deleteAccount").addEventListener("click",async()=>{if(!confirm("Permanently delete this merchant and all its data? This cannot be undone."))return;try{await api("/api/account",{method:"DELETE"});showAuth();notice("Merchant data deleted.");}catch(err){notice(err.message,true);}});
-    fetch("/public/config").then(response=>{if(!response.ok)throw new Error("Could not load signup settings");return response.json();}).then(config=>{publicConfig=config;$("#toggleAuth").hidden=!config.signup_enabled;$("#inviteLabel").hidden=!config.invite_required;$("#registerForm [name=invite_code]").required=config.invite_required;if(!config.signup_enabled)$("#authMessage").textContent="Account creation is unavailable until email delivery is configured.";if(verificationToken){$("#loginForm").hidden=true;$("#registerForm").hidden=true;$("#verifyForm").hidden=false;$("#resendForm").hidden=true;$("#toggleAuth").hidden=true;$("#authTitle").textContent="Verify your email";$("#authDescription").textContent="Continue only if you requested a Hermes workspace.";history.replaceState(null,"",location.pathname);}}).catch(()=>{$("#authMessage").textContent="Signup settings could not be loaded. Please refresh the page.";});
-    api("/api/dashboard").then(render).catch(()=>showAuth());
+    fetch("/public/config").then(response=>{if(!response.ok)throw new Error("Could not load signup settings");return response.json();}).then(config=>{publicConfig=config;$("#toggleAuth").hidden=!config.signup_enabled;setAuthMode(config.signup_enabled?"signup":"login");if(!config.signup_enabled)$("#authMessage").textContent="New workspace creation is temporarily unavailable. Please sign in or contact the workspace administrator.";else if(config.local_email_verification)$("#authMessage").textContent="Local development: signup is available, and a one-time verification link will be shown here. No email will be sent.";if(verificationToken){setAuthMode("verify");$("#authTitle").textContent="Verify your email";$("#authDescription").textContent="Continue only if you requested a Hermes workspace.";history.replaceState(null,"",location.pathname);}}).catch(()=>{$("#authMessage").textContent="Signup settings could not be loaded. Please refresh the page.";});
+    setInterval(()=>{if(dashboard&&$("#app").style.display==="block")refresh().catch(err=>notice(`Dashboard refresh failed: ${err.message}`,true));},30000);
+    api("/auth/session").then(session=>session.authenticated?refresh():showAuth()).catch(()=>showAuth());
   </script>
 </body>
 </html>

@@ -88,7 +88,10 @@ flowchart TD
 
 **Implemented and covered by offline tests:** email verification before session
 and trial activation; invite-only or explicitly enabled signup with IP/email
-rate limits; tenant-scoped catalog, conversations, metrics, queues and document
+rate limits; a public SaaS landing and onboarding flow; loopback-only local
+verification links when SMTP is absent (not available in production); encrypted
+optional owner contact phone storage (not SMS-verified); tenant-scoped catalog,
+conversations, metrics, queues and document
 retrieval; encryption of credentials and customer data when
 `HERMES_ENCRYPTION_KEY` is configured; consent gates for external LLM/embedding
 calls; an in-dashboard handoff queue; inbound idempotency; leased outbound
@@ -98,10 +101,16 @@ customer-authorized M-Pesa subscription checkout, grace period and reconciliatio
 customer booking with configured weekly hours and 30-minute slots; stock
 reservation on order submission and deduction after verified payment; and
 campaign attribution from WhatsApp click-to-chat referral source IDs.
+Merchants can also import/export product and tracked-stock CSV files; imports
+merge by product name and preserve other catalog entries. Price or stock
+changes are held in a tenant-scoped review queue; merchants can keep current
+values or accept incoming values, and stale conflicts must be reviewed again.
 
 **Still required before production:** complete live Meta and Daraja sandbox
 rehearsals with merchant credentials, public HTTPS callbacks and designated
-test phones; merchant-managed template approval remains an attestation rather
+test phones; production SMTP and email-domain delivery must be configured;
+phone verification requires selecting and configuring an SMS/phone provider;
+merchant-managed template approval remains an attestation rather
 than live Meta status synchronization; SMTP and Hermes billing credentials
 must be configured and exercised; external staff notifications and response
 time automation; monitoring/alerting and outbound delivery reconciliation;
@@ -113,6 +122,11 @@ Campaign reporting matches referral source IDs and does not provide generalized
 UTM attribution or ad-spend reporting. The provider rehearsal button performs
 read-only Meta account lookup and Daraja OAuth checks; it does not send
 WhatsApp messages, initiate STK prompts, or prove webhook delivery.
+Hermes does not currently have direct live sync adapters for third-party POS or
+inventory systems. CSV import/export is available; prioritize a two-way
+connector only after identifying the specific provider and testing its
+authentication, rate limits, product/variant mapping, stock ownership, and
+conflict behavior.
 
 ## Integration, LLM and retrieval audit
 
@@ -221,7 +235,10 @@ the merchant's actual inventory system remains the source of truth until a POS
 integration exists.
 
 Customer booking is available through the tenant's public booking page.
-Merchants configure weekly hours and timezone, and the service rejects
-overlapping active bookings. Customers can book 30-minute slots and cancel
-with their booking reference and original phone. Deposits, calendar sync and
-automated reminders remain future work.
+Merchants configure weekly hours and timezone, create appointments, search and
+filter the dashboard schedule, edit appointment details, reschedule, and mark
+appointments complete or cancelled. Confirmed appointments block overlapping
+times across services, including when a merchant edits or reopens one.
+Customers can book 30-minute slots and cancel with their booking reference and
+original phone. Deposits, calendar sync, automated reminders, and staff/resource
+assignment remain future work.

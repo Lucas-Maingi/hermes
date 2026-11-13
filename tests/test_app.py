@@ -12,6 +12,7 @@ from hermes.business import Business
 from hermes.llm.mock import MockLLM
 from hermes.mpesa.simulator import MpesaSimulator
 from hermes.runtime import Runtime
+from hermes.sample_business import sample_business
 
 
 @pytest.fixture
@@ -23,7 +24,12 @@ def sim():
 def client(tmp_path, sim, monkeypatch):
     monkeypatch.setenv("HERMES_CHAT_API_TOKEN", "test-chat-token")
     monkeypatch.setenv("WHATSAPP_APP_SECRET", "test-app-secret")
-    rt = Runtime(db_path=str(tmp_path / "hermes.db"), mpesa=sim, llm=MockLLM())
+    rt = Runtime(
+        db_path=str(tmp_path / "hermes.db"),
+        business=sample_business(),
+        mpesa=sim,
+        llm=MockLLM(),
+    )
     return TestClient(create_app(rt)), rt, sim
 
 
