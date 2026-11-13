@@ -1,20 +1,27 @@
+x-hermes-environment: &hermes-environment
+  HERMES_DB: /app/data/hermes.db
+  HERMES_INVITE_TOKEN: ${HERMES_INVITE_TOKEN:?Set a private HERMES_INVITE_TOKEN}
+  HERMES_ENCRYPTION_KEY: ${HERMES_ENCRYPTION_KEY:?Set and preserve HERMES_ENCRYPTION_KEY}
+  HERMES_RETENTION_DAYS: ${HERMES_RETENTION_DAYS:-365}
+  HERMES_LLM_PROVIDER: ${HERMES_LLM_PROVIDER:-auto}
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  HERMES_CHAT_API_TOKEN: ${HERMES_CHAT_API_TOKEN:-}
+  WHATSAPP_GRAPH_API_VERSION: ${WHATSAPP_GRAPH_API_VERSION:-v26.0}
+
 services:
   api:
     build: .
     ports:
       - "8000:8000"
-    environment:
-      # Leave these unset to run on the built-in simulators; set them to go live.
-      - HERMES_LLM_PROVIDER=${HERMES_LLM_PROVIDER:-}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN:-}
-      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID:-}
-      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN:-}
-      - MPESA_CONSUMER_KEY=${MPESA_CONSUMER_KEY:-}
-      - MPESA_CONSUMER_SECRET=${MPESA_CONSUMER_SECRET:-}
-      - MPESA_SHORTCODE=${MPESA_SHORTCODE:-}
-      - MPESA_PASSKEY=${MPESA_PASSKEY:-}
-      - MPESA_CALLBACK_URL=${MPESA_CALLBACK_URL:-}
+    environment: *hermes-environment
+    volumes:
+      - hermes-data:/app/data
+
+  worker:
+    build: .
+    command: ["python", "scripts/run_worker.py"]
+    environment: *hermes-environment
     volumes:
       - hermes-data:/app/data
 

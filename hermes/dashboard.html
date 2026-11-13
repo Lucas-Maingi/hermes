@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hermes | Merchant workspace</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:#132b3a;background:#f4f7f8;font-synthesis:none;--ink:#132b3a;--sub:#72818a;--line:#e4eaec;--green:#16a36a;--mint:#e7f7ee;--nav:#102d3a}
+    *{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}
+    button{border:0;border-radius:10px;padding:10px 15px;background:var(--green);color:white;font-weight:650;cursor:pointer;transition:transform .15s,background .15s}
+    button:hover{background:#128658;transform:translateY(-1px)}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #37c98b55;outline-offset:2px}
+    button.secondary{background:#edf3f4;color:#244451}button.secondary:hover{background:#e1ebed}button.danger{background:#a83232}
+    input,textarea,select{width:100%;border:1px solid #dce5e7;border-radius:10px;padding:11px 12px;background:white;color:var(--ink)}
+    textarea{min-height:110px;resize:vertical}label{display:grid;gap:7px;color:#415762;font-size:13px;font-weight:600}
+    .auth{max-width:1080px;margin:6vh auto;padding:clamp(22px,4vw,48px);display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(24px,5vw,64px);align-items:center;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 70px #112e3a12}
+    .auth-copy h1{font-size:clamp(32px,5vw,54px);line-height:1.04;letter-spacing:-2px;margin:14px 0}.auth-copy>p{font-size:16px;line-height:1.7;max-width:520px;color:#52666e}
+    .landing-kicker{display:inline-flex;padding:7px 11px;border-radius:99px;background:#e8f7ef;color:#18734d;font-size:12px;font-weight:750}
+    .landing-features{display:grid;gap:12px;margin:24px 0}.landing-feature{display:flex;gap:12px;align-items:flex-start;color:#52666e;font-size:13px;line-height:1.55}.landing-feature b{display:block;color:var(--ink);font-size:14px}
+    .feature-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:11px;background:#e8f7ef;color:#168356;font-weight:800}
+    .auth-panel{padding:26px;border:1px solid var(--line);border-radius:18px;background:#fbfdfc}.auth-panel h2{margin-top:12px}
+    .auth-terms{margin:14px 0 0;font-size:11px;line-height:1.55;color:var(--sub)}
+    .auth h1{margin:14px 0 6px}.muted{color:var(--sub);font-size:14px}.stack{display:grid;gap:15px}.row{display:flex;gap:10px;align-items:center}
+    .app{display:none;min-height:100vh}.sidebar{width:252px;background:var(--nav);color:white;padding:24px 15px;position:fixed;inset:0 auto 0 0;display:flex;flex-direction:column;z-index:5}
+    .brand{font-size:24px;font-weight:850;letter-spacing:-1px;padding:0 13px 22px;color:white}.brand b{color:#4dd38d}.brand small{display:block;color:#a8bec7;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+    .nav-label{padding:20px 13px 7px;color:#89a2ad;font-size:10px;font-weight:750;letter-spacing:1.2px;text-transform:uppercase}.sidebar nav{display:grid;gap:4px}
+    .nav{background:transparent;text-align:left;color:#c5d5da;font-weight:560;width:100%;padding:11px 13px;border-radius:10px;display:flex;align-items:center;gap:11px}
+    .nav:before{content:attr(data-icon);width:18px;text-align:center;color:#93aaaF;font-size:16px}.nav.active,.nav:hover{background:#ffffff14;color:white}.nav.active:before{color:#60dc9e}
+    .sidebar-foot{margin-top:auto;border-top:1px solid #ffffff20;padding:16px 10px 0}.account-chip{display:flex;align-items:center;gap:10px}.avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#c9f3dd;color:#145138;font-weight:800}
+    .main{margin-left:252px;padding:28px clamp(20px,4vw,58px);max-width:1650px}.top{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:27px}
+    .top h1{font-size:26px;letter-spacing:-.7px;margin:0}.top-actions{display:flex;align-items:center;gap:10px}.workspace-label{font-size:12px;color:var(--sub);margin-top:5px}
+    h2{font-size:18px;letter-spacing:-.25px;margin:0 0 15px}.eyebrow{font-size:11px;font-weight:750;letter-spacing:1.3px;color:var(--green);text-transform:uppercase}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 3px 14px #153b4905}
+    .metric-card{position:relative;overflow:hidden}.metric-card:after{content:"";position:absolute;right:-18px;top:-25px;width:78px;height:78px;border-radius:50%;background:var(--mint);opacity:.85}
+    .metric{font-size:30px;font-weight:780;letter-spacing:-1.3px;margin:9px 0 3px}.metric-label{font-size:12px;color:var(--sub);font-weight:600}.metric-foot{font-size:11px;color:#71838b}
+    .content{display:grid;gap:16px}.section{display:none}.section.active{display:grid;gap:17px}
+    .section-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px}.section-heading h2{font-size:24px;margin:5px 0}.section-heading p{margin:0}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #edf1f2;vertical-align:middle}th{color:#7a8a91;font-size:10px;letter-spacing:.7px;text-transform:uppercase}tbody tr:hover{background:#f8fbfa}
+    .badge{border-radius:99px;background:var(--mint);color:#18734d;padding:5px 9px;font-size:11px;font-weight:650;white-space:nowrap}.badge.warn{background:#fff2d8;color:#825d12}.badge.neutral{background:#edf2f4;color:#52666e}
+    .notice{padding:12px 14px;border-radius:11px;background:#e8f6ee;color:#315b43}.notice.error{background:#fff0ee;color:#8f2f28}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.span{grid-column:1/-1}.actions{display:flex;gap:8px;flex-wrap:wrap}
+    pre{white-space:pre-wrap;word-break:break-word;background:#f6f8f8;padding:13px;border-radius:9px}.empty{padding:30px;text-align:center;color:#76868d}
+    .hint{font-size:12px;color:var(--sub);line-height:1.55}.right{margin-left:auto}
+    .hero-card{background:linear-gradient(115deg,#113746,#17513f);color:#fff;border:0;padding:24px 27px;position:relative;overflow:hidden}
+    .hero-card:after{content:"";position:absolute;width:250px;height:250px;border:1px solid #ffffff18;border-radius:50%;right:5%;top:-150px;box-shadow:0 0 0 35px #ffffff08,0 0 0 70px #ffffff05}
+    .hero-card h2{font-size:22px;margin:8px 0}.hero-card .muted{color:#c3d5d8}.hero-card .eyebrow{color:#72e6a8}.hero-actions{display:flex;gap:10px;margin-top:18px;position:relative;z-index:1}.hero-card button.secondary{background:#ffffff1d;color:white}
+    .mini-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}.progress-row{display:grid;grid-template-columns:105px 1fr 38px;gap:10px;align-items:center;margin:15px 0;font-size:12px;color:#52666e}
+    .progress{height:8px;border-radius:99px;background:#edf2f3;overflow:hidden}.progress i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#24b675,#74dfa6)}
+    .status-line{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #edf1f2;font-size:13px}.status-line:last-child{border:0}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar input{max-width:300px}.filter-chip{background:#f0f4f5;color:#45606b;padding:8px 12px;font-size:12px}.filter-chip.active{background:#dff4e9;color:#176b48}
+    .inbox-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(290px,.7fr);gap:16px}.summary-box{padding:14px;border-radius:12px;background:#f4f8f7;margin-bottom:12px}
+    .message-list{max-height:520px;overflow:auto;display:grid;gap:10px}.message-bubble{padding:12px 14px;border-radius:13px;background:#f3f6f7;max-width:86%;font-size:13px;line-height:1.55}.message-bubble.agent{background:#e7f7ee;justify-self:end}.message-meta{font-size:10px;color:#71838b;margin-bottom:5px}
+    @media(max-width:980px){.sidebar{width:100%;position:static;padding:12px}.brand{padding:0 8px 12px}.sidebar nav{display:flex;overflow:auto}.nav-label,.sidebar-foot{display:none}.nav{width:auto;white-space:nowrap}.main{margin:0;padding:22px}.mini-grid,.inbox-layout{grid-template-columns:1fr}}
+    @media(max-width:750px){.auth{grid-template-columns:1fr;margin:18px auto;padding:22px}.auth-copy h1{font-size:38px;letter-spacing:-1.3px}.auth-panel{padding:20px}}
+    @media(max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid{grid-template-columns:1fr}.span{grid-column:auto}.top{align-items:flex-start}.top-actions{flex-wrap:wrap;justify-content:flex-end}.section-heading{align-items:flex-start;flex-direction:column}.hero-actions{flex-wrap:wrap}.main{padding:16px}.grid{gap:9px}.card{padding:16px}.metric{font-size:25px}}
+  </style>
+</head>
+<body>
+  <section id="auth" class="auth">
+    <div class="auth-copy">
+      <span class="landing-kicker">WhatsApp commerce, organized</span>
+      <h1>Turn customer chats into confident next steps.</h1>
+      <p>Give customers quick, grounded answers, capture orders, collect M-Pesa payments, and bring a person in when needed.</p>
+      <div class="landing-features">
+        <div class="landing-feature"><span class="feature-icon">01</span><div><b>Answer from your business knowledge</b>Use your product catalog and FAQs, with a human handoff when the assistant needs help.</div></div>
+        <div class="landing-feature"><span class="feature-icon">02</span><div><b>Keep orders and payments visible</b>Follow conversations, order status, Daraja callbacks, and staff requests from one workspace.</div></div>
+        <div class="landing-feature"><span class="feature-icon">03</span><div><b>Try it before connecting a live number</b>Start with the simulator, then follow the guided steps for WhatsApp and M-Pesa setup.</div></div>
+      </div>
+      <p class="hint">New workspace: verify your email to activate a 7-day Premium trial, then keep your workspace on the free plan. Premium renews monthly through a customer-authorized M-Pesa prompt.</p>
+    </div>
+    <div class="auth-panel">
+      <div class="brand" style="padding:0;color:#132b3a">hermes<b style="color:#16a36a">.</b><small style="color:#72818a">merchant workspace</small></div>
+      <h2 id="authTitle">Welcome back</h2>
+      <p class="muted" id="authDescription">Sign in to your merchant workspace.</p>
+      <form id="loginForm" class="stack">
+        <label>Email<input name="email" type="email" autocomplete="username" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button>Sign in</button>
+      </form>
+      <form id="registerForm" class="stack" hidden>
+        <label id="inviteLabel">Merchant invitation code<input name="invite_code" autocomplete="off"></label>
+        <label>Business name<input name="name" required maxlength="120"></label>
+        <label>Owner email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password (at least 12 characters)<input name="password" type="password" autocomplete="new-password" minlength="12" required></label>
+        <button>Start my free 7-day Premium trial</button>
+      </form>
+      <form id="verifyForm" class="stack" hidden>
+        <p class="muted">Confirm your email address to activate the workspace.</p>
+        <button>Verify email and continue</button>
+      </form>
+      <form id="resendForm" class="stack" hidden>
+        <label>Email address<input name="email" type="email" autocomplete="email" required></label>
+        <button class="secondary">Resend verification email</button>
+      </form>
+      <p id="authMessage" class="hint" aria-live="polite"></p>
+      <button id="toggleAuth" class="secondary">Create a free trial workspace</button>
+      <p class="auth-terms">By creating a workspace, you confirm that you are authorized to represent this business. WhatsApp and M-Pesa connections require separate provider setup and approval.</p>
+    </div>
+  </section>
+
+  <div id="app" class="app">
+    <aside class="sidebar">
+      <div class="brand">hermes<b>.</b><small>merchant workspace</small></div>
+      <div class="nav-label">Workspace</div>
+      <nav>
+        <button class="nav active" data-section="overview" data-icon="⌂">Overview</button>
+        <button class="nav" data-section="orders" data-icon="◉">AI inbox</button>
+        <button class="nav" data-section="payments" data-icon="↗">Orders & payments</button>
+        <button class="nav" data-section="bookings" data-icon="◷">Bookings</button>
+        <button class="nav" data-section="inventory" data-icon="▣">Inventory</button>
+        <button class="nav" data-section="campaigns" data-icon="↗">Campaigns</button>
+        <button class="nav" data-section="handoffs" data-icon="◎">Staff handoffs</button>
+        <button class="nav" data-section="simulator" data-icon="✳">Try assistant</button>
+      </nav>
+      <div class="nav-label">Business setup</div>
+      <nav>
+        <button class="nav" data-section="catalog" data-icon="▦">Products & FAQs</button>
+        <button class="nav" data-section="knowledge" data-icon="▤">Knowledge base</button>
+        <button class="nav" data-section="integrations" data-icon="⚙">Integrations</button>
+      </nav>
+      <div class="sidebar-foot"><div class="account-chip"><span class="avatar" id="accountAvatar">H</span><div><b id="sidebarBusiness">Workspace</b><div class="hint" id="sidebarRole"></div></div></div></div>
+    </aside>
+    <main class="main">
+      <header class="top">
+        <div><h1 id="businessName">Merchant workspace</h1><div id="ownerEmail" class="workspace-label"></div></div>
+        <div class="top-actions"><span class="badge neutral" id="subscriptionBadge">Workspace</span><button id="logout" class="secondary">Sign out</button></div>
+      </header>
+      <div id="message" aria-live="polite"></div>
+      <div class="content">
+        <section id="overview" class="section active">
+          <div id="trialBanner" class="notice"><div id="trialMessage"></div><form id="billingForm" class="row" style="margin-top:10px" hidden><label>Pay Premium from phone<input name="phone" required maxlength="40" placeholder="+2547..."></label><button>Pay KES 2,500/month</button></form><p id="billingStatus" class="hint" aria-live="polite"></p></div>
+          <div class="card hero-card">
+            <div class="eyebrow">Your WhatsApp operations, at a glance</div>
+            <h2 id="welcomeTitle">Keep every customer conversation moving.</h2>
+            <p class="muted">Review orders, find conversations that need a person, and keep your business answers up to date.</p>
+            <div class="hero-actions"><button data-go="orders">Open AI inbox</button><button class="secondary" data-go="integrations">Connect a channel</button></div>
+          </div>
+          <div class="grid" id="metrics"></div>
+          <div class="mini-grid">
+            <div class="card"><div class="row"><div><div class="eyebrow">Commerce snapshot</div><h2 style="margin-top:7px">From conversation to payment</h2></div><span class="badge neutral">All time</span></div><div id="commerceFunnel"></div></div>
+            <div class="card"><div class="eyebrow">Setup checklist</div><h2 style="margin-top:7px">Ready for your first customer?</h2><div id="setupChecklist"></div></div>
+          </div>
+          <div class="card"><div class="row"><div><div class="eyebrow">Latest activity</div><h2 style="margin-top:6px">Recent conversations</h2></div><button class="secondary right" data-go="orders">View inbox</button></div><div id="recentOrders"></div></div>
+        </section>
+        <section id="simulator" class="section">
+          <div class="card">
+            <h2>Try your assistant</h2>
+            <p class="muted">Test this merchant's catalog, knowledge, order flow and escalation without sending a WhatsApp message.</p>
+            <div id="simulatorTranscript" class="content" aria-live="polite"></div>
+            <form id="simulatorForm" class="form-grid" style="margin-top:16px">
+              <label>Customer phone<input name="phone" value="254700000000"></label>
+              <label class="span">Message<textarea name="text" required maxlength="4000" placeholder="Ask a question or try placing an order"></textarea></label>
+              <div class="span"><button>Send test message</button></div>
+            </form>
+          </div>
+        </section>
+        <section id="orders" class="section">
+          <div class="section-heading"><div><div class="eyebrow">Customer conversations</div><h2>AI inbox</h2><p class="muted">Orders, questions, payments and staff handoffs in one place.</p></div><span class="badge" id="inboxCount">0 conversations</span></div>
+          <div class="card"><div class="toolbar"><input id="conversationSearch" type="search" placeholder="Search customer or recent message" aria-label="Search conversations"><button class="filter-chip active" data-filter="all">All</button><button class="filter-chip" data-filter="orders">Orders</button><button class="filter-chip" data-filter="handoffs">Needs a person</button></div><div id="allOrders" style="margin-top:14px"></div></div>
+          <div class="inbox-layout">
+            <div class="card"><div class="row"><div><div class="eyebrow">Conversation thread</div><h2 id="conversationTitle" style="margin:6px 0">Select a conversation</h2></div><span id="conversationChannel" class="badge neutral"></span></div><div id="conversationDetail" class="empty">Choose a conversation to see its messages and next steps.</div></div>
+            <aside class="card"><div class="eyebrow">Customer context</div><h2 style="margin-top:6px">Quick summary</h2><div id="conversationSummary" class="empty">Select a conversation to see order, payment and handoff context.</div></aside>
+          </div>
+        </section>
+        <section id="payments" class="section">
+          <div class="section-heading"><div><div class="eyebrow">Commerce</div><h2>Orders & payments</h2><p class="muted">Payment status shown from the conversation and provider callback data.</p></div></div>
+          <div class="grid" id="paymentMetrics"></div>
+          <div class="card"><h2>Payment activity</h2><div id="paymentTable"></div></div>
+          <div class="notice">Payment status in Hermes is operational visibility, not a substitute for reconciling Daraja or merchant settlement records. Subscription payments are prompted monthly; Daraja does not authorize recurring debits here.</div>
+        </section>
+        <section id="handoffs" class="section">
+          <div class="card"><h2>Staff inbox</h2><p class="muted">Open requests are the conversations that need a person. Assign or resolve them here.</p><div id="handoffList"></div></div>
+        </section>
+        <section id="bookings" class="section">
+          <div class="section-heading"><div><div class="eyebrow">Appointments</div><h2>Bookings</h2><p class="muted">Create and manage bookings. Times are entered in your local timezone.</p></div></div>
+          <div class="card">
+            <h2>Customer self-booking hours</h2>
+            <p class="hint">Use weekday keys 0-6 (Monday-Sunday) and 24-hour times, e.g. {"0":{"open":"09:00","close":"17:00"}}. Customers can choose 30-minute slots.</p>
+            <form id="bookingSettingsForm" class="form-grid">
+              <label>Timezone<input name="timezone" value="Africa/Nairobi" required></label>
+              <label class="span">Weekly hours JSON<textarea name="weekly_hours" required placeholder='{"0":{"open":"09:00","close":"17:00"},"1":{"open":"09:00","close":"17:00"}}'></textarea></label>
+              <div class="span"><button>Save hours and enable self-booking</button></div>
+            </form>
+            <p class="hint">Public booking link: <a id="publicBookingLink" href="#" target="_blank" rel="noopener noreferrer">Configure business hours to enable</a></p>
+          </div>
+          <div class="card"><div id="bookingTable"></div></div>
+          <div class="card">
+            <h2>Create a booking</h2>
+            <form id="bookingForm" class="form-grid">
+              <label>Service<input name="service" required maxlength="120" placeholder="e.g. Consultation"></label>
+              <label>Customer name<input name="customer_name" required maxlength="120"></label>
+              <label>Customer phone<input name="customer_phone" required maxlength="40"></label>
+              <label>Start time<input name="starts_at" type="datetime-local" required></label>
+              <label>Duration (minutes)<input name="duration_minutes" type="number" min="5" max="1440" value="60" required></label>
+              <label class="span">Notes<textarea name="notes" maxlength="2000"></textarea></label>
+              <div class="span"><button>Create booking</button></div>
+            </form>
+            <p class="hint">Confirmed bookings block overlapping times for all services. Public self-booking requires configured hours. Deposits, calendar sync, and WhatsApp reminders are not connected.</p>
+          </div>
+        </section>
+        <section id="inventory" class="section">
+          <div class="section-heading"><div><div class="eyebrow">Stock control</div><h2>Inventory</h2><p class="muted">Set current product counts and keep an adjustment history.</p></div></div>
+          <div class="card"><div id="inventoryTable"></div></div>
+          <div class="card">
+            <h2>Update stock count</h2>
+            <form id="inventoryForm" class="form-grid">
+              <label>Catalog product<select name="product_name" required></select></label>
+              <label>New quantity<input name="quantity" type="number" min="0" step="1" required></label>
+              <label class="span">Reason<input name="reason" required maxlength="500" placeholder="e.g. Weekly stock count"></label>
+              <div class="span"><button>Save stock count</button></div>
+            </form>
+            <p class="hint">Tracked units are reserved when added to an order, released on cancellation or expired/failed payment, and deducted once payment is verified. Manual counts cannot go below active reservations.</p>
+          </div>
+          <div class="card"><h2>Recent adjustments</h2><div id="inventoryHistory"></div></div>
+        </section>
+        <section id="campaigns" class="section">
+          <div class="section-heading"><div><div class="eyebrow">Acquisition</div><h2>Campaign attribution</h2><p class="muted">Match Meta click-to-WhatsApp referrals to campaign records and paid orders.</p></div></div>
+          <div class="card">
+            <h2>Track a campaign</h2>
+            <p class="hint">Enter the Meta ad/source ID. Hermes attributes new conversations only when the inbound WhatsApp referral includes the matching source ID; paid verified orders count once.</p>
+            <form id="campaignForm" class="form-grid">
+              <label>Campaign name<input name="name" required maxlength="120"></label>
+              <label>Channel<select name="channel"><option value="whatsapp">WhatsApp</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="other">Other</option></select></label>
+              <label class="span">Provider ad/source ID<input name="external_source_id" required maxlength="200"></label>
+              <div class="span"><button>Create campaign</button></div>
+            </form>
+          </div>
+          <div class="card"><h2>Campaign performance</h2><div id="campaignTable"></div></div>
+        </section>
+        <section id="catalog" class="section">
+          <div class="card"><h2>Product catalog</h2><div id="products"></div></div>
+          <div class="card">
+            <h2>Add a product</h2>
+            <form id="productForm" class="form-grid">
+              <label>Product name<input name="name" required></label>
+              <label>Price<input name="price" type="number" min="0" step="1" required></label>
+              <label>Unit / size<input name="unit" placeholder="e.g. 1 kg"></label>
+              <label>Aliases<input name="aliases" placeholder="comma separated"></label>
+              <label class="row"><input name="in_stock" type="checkbox" checked style="width:auto"> Available</label>
+              <div class="span"><button>Save product</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Business facts and FAQs</h2>
+            <p class="hint">One topic per line, formatted as <code>topic: answer</code>. Examples: hours, location, delivery, payment, returns, contact.</p>
+            <form id="factsForm" class="stack"><textarea name="facts" aria-label="Business facts"></textarea><button>Save facts</button></form>
+          </div>
+        </section>
+        <section id="knowledge" class="section">
+          <div class="card">
+            <h2>Knowledge base</h2>
+            <p class="muted">Upload business policies, product guides, price lists, and FAQs. Hermes extracts text, then chunks and indexes it using BM25 plus vector similarity when embeddings are configured.</p>
+            <form id="fileUploadForm" class="stack">
+              <label>Upload files<input name="files" type="file" multiple required accept=".pdf,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.txt,.md,.csv,.json,.html,.htm,.xml,.yaml,.yml,.log,.rtf,.eml"></label>
+              <div class="hint">Supported: PDF, Word, Excel, PowerPoint, TXT, Markdown, CSV, JSON, HTML, XML, YAML, RTF, and EML. Up to 15 MB per file. Scanned/image-only PDFs require OCR before upload. Original files are not retained; extracted text is indexed.</div>
+              <button>Upload and index files</button>
+            </form>
+            <h3 style="margin-top:24px">Or paste text</h3>
+            <form id="documentForm" class="stack">
+              <label>Text title<input name="title" required></label>
+              <label>Document text<textarea name="text" required maxlength="100000"></textarea></label>
+              <button>Index document</button>
+            </form>
+            <label class="row" style="margin-top:14px"><input id="embeddingConsent" type="checkbox" style="width:auto"> I approve sending document text and future customer queries to my configured embedding provider</label>
+            <div class="hint">Without an embedding provider key, search uses tenant-scoped BM25 lexical retrieval only. Product prices and stock remain in the structured catalog and are never inferred from documents.</div>
+            <h2 style="margin-top:24px">Search approved knowledge</h2>
+            <form id="knowledgeSearchForm" class="row">
+              <input name="query" aria-label="Search knowledge" placeholder="Ask a policy or product question" required>
+              <button>Search</button>
+            </form>
+            <div id="knowledgeResults" aria-live="polite"></div>
+            <h2 style="margin-top:24px">Indexed documents</h2><div id="documents"></div>
+          </div>
+        </section>
+        <section id="integrations" class="section">
+          <div class="card">
+            <h2>WhatsApp and payments</h2>
+            <p class="hint">Credentials are encrypted at rest using HERMES_ENCRYPTION_KEY. They are write-only here and never returned to the browser. Do not paste test credentials into a public/shared machine.</p>
+            <form id="integrationForm" class="form-grid">
+              <label>WhatsApp phone-number ID<input name="whatsapp_phone_number_id"></label>
+              <label>WhatsApp access token<input name="whatsapp_token" type="password" autocomplete="new-password"></label>
+              <label>WhatsApp app secret<input name="whatsapp_app_secret" type="password" autocomplete="new-password"></label>
+              <label>WhatsApp webhook verify token<input name="whatsapp_verify_token" type="password" autocomplete="new-password"></label>
+              <label>M-Pesa consumer key<input name="mpesa_consumer_key" type="password" autocomplete="new-password"></label>
+              <label>M-Pesa consumer secret<input name="mpesa_consumer_secret" type="password" autocomplete="new-password"></label>
+              <label>Business shortcode / till<input name="mpesa_shortcode"></label>
+              <label>Daraja passkey<input name="mpesa_passkey" type="password" autocomplete="new-password"></label>
+              <label>Public HTTPS callback URL<input name="mpesa_callback_url" type="url" placeholder="https://.../mpesa/callback"></label>
+              <label>Environment<select name="mpesa_environment"><option value="sandbox">Sandbox</option><option value="production">Production</option></select></label>
+              <label class="span">Embedding API key (optional)<input name="embedding_api_key" type="password" autocomplete="new-password"></label>
+              <label>Embedding base URL<input name="embedding_base_url" value="https://api.openai.com/v1"></label>
+              <label>Embedding model<input name="embedding_model" value="text-embedding-3-small"></label>
+              <label class="row span"><input name="embedding_consent" type="checkbox" style="width:auto"> I consent to sending this tenant's knowledge and customer queries to the configured embedding service</label>
+              <label class="span">Tenant LLM API key (optional)<input name="chat_api_key" type="password" autocomplete="new-password"></label>
+              <label>LLM base URL<input name="chat_base_url" value="https://api.openai.com/v1"></label>
+              <label>LLM model<input name="chat_model" value="gpt-4o-mini"></label>
+              <label class="row span"><input name="llm_data_consent" type="checkbox" style="width:auto"> I consent to sending customer messages and tenant data to the configured LLM provider. Without consent, the built-in local mock agent is used.</label>
+              <div class="span"><button>Save credentials</button></div>
+            </form>
+            <p id="integrationStatus" class="hint"></p>
+            <button id="rehearseIntegrations" class="secondary" type="button">Run read-only provider rehearsal</button>
+            <p id="rehearsalStatus" class="hint" role="status" aria-live="polite">Checks Meta account access and Daraja OAuth only; it will not send messages or payment prompts.</p>
+          </div>
+          <div class="card">
+            <h2>Approved WhatsApp templates</h2>
+            <p class="hint">Create and get templates approved in WhatsApp Manager first. Hermes cannot submit them to or verify approval with Meta; only add a template here after confirming its exact name, language, category, and body variable count in Meta.</p>
+            <form id="templateForm" class="form-grid">
+              <label>Approved template name<input name="name" required pattern="[a-z0-9_]+" maxlength="512"></label>
+              <label>Language code<input name="language" value="en" required maxlength="8" placeholder="en or en_US"></label>
+              <label>Category<select name="category"><option value="utility">Utility</option><option value="marketing">Marketing</option></select></label>
+              <label>Body text variables<input name="body_parameter_count" type="number" min="0" max="10" value="0" required></label>
+              <label class="row span"><input name="meta_approval_confirmed" type="checkbox" style="width:auto" required> I have verified that Meta approved this template for the configured WhatsApp number</label>
+              <div class="span"><button>Add approved template</button></div>
+            </form>
+            <div id="templateList"></div>
+          </div>
+          <div class="card">
+            <h2>Customer messaging permission</h2>
+            <p class="hint">Record permission only when you have evidence of the customer's opt-in. The customer can withdraw it at any time; scheduled messages are suppressed after opt-out. A STOP/UNSUBSCRIBE message also withdraws consent.</p>
+            <form id="consentForm" class="form-grid">
+              <label>Customer phone<input name="phone" required maxlength="40"></label>
+              <label>Permission<select name="opted_in"><option value="true">Opted in</option><option value="false">Opted out</option></select></label>
+              <label class="span">Consent source / evidence<input name="source" required maxlength="500" placeholder="e.g. Website checkbox, 2026-11-12"></label>
+              <div class="span"><button>Save permission</button></div>
+            </form>
+          </div>
+          <div class="card">
+            <h2>Schedule a WhatsApp follow-up</h2>
+            <form id="followupForm" class="form-grid">
+              <label>Customer phone<input name="phone" required maxlength="40"></label>
+              <label>Approved template<select name="template_id" required></select></label>
+              <label>Send at (your local time)<input name="send_at" type="datetime-local" required></label>
+              <label class="span">Body variables (one value per line)<textarea name="parameters" placeholder="Customer name&#10;Order number"></textarea></label>
+              <div class="span"><button>Schedule follow-up</button></div>
+            </form>
+            <div id="followupList"></div>
+            <p class="hint">A running worker is required for delivery. Permission is checked again at send time. Template delivery also depends on live Meta credentials and its approval state there.</p>
+          </div>
+          <div class="card"><h2>Account and privacy</h2><p class="muted">Deleting this merchant permanently removes its users, sessions, conversations, catalog, documents, and queues.</p><button id="deleteAccount" class="danger">Delete merchant data</button></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    let dashboard = null;
+    let publicConfig = {invite_required:false,signup_enabled:false,email_verification_required:true,premium_trial_days:7,premium_monthly_price_kes:2500};
+    let simulatorConversationId = null;
+    let simulatorPhone = "";
+    let inboxFilter = "all";
+    let verificationToken = new URLSearchParams(location.search).get("verify");
+    async function api(path, options = {}) {
+      const headers = options.body instanceof FormData ? {...(options.headers || {})} : {"Content-Type":"application/json", ...(options.headers || {})};
+      const response = await fetch(path, {credentials:"same-origin", ...options, headers});
+      if (response.status === 401) { showAuth(); throw new Error("Please sign in again."); }
+      const body = response.status === 204 ? null : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body?.detail || `Request failed (${response.status})`);
+      return body;
+    }
+    function notice(text, error = false) { $("#message").innerHTML = `<div class="notice ${error ? "error" : ""}">${esc(text)}</div>`; setTimeout(() => $("#message").replaceChildren(), 5000); }
+    function showAuth() { $("#app").style.display="none"; $("#auth").style.display="block"; }
+    function showApp() { $("#auth").style.display="none"; $("#app").style.display="block"; }
+    function showTable(rows, columns) {
+      if (!rows.length) return '<div class="empty">Nothing here yet.</div>';
+      return `<div style="overflow:auto"><table><thead><tr>${columns.map(c=>`<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row=>`<tr>${columns.map(c=>`<td>${esc(c.value(row))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }
+    function conversationTable(rows, currency) {
+      if (!rows.length) return '<div class="empty">No conversations match this view.</div>';
+      return `<div style="overflow:auto"><table><thead><tr><th>Customer</th><th>Recent message</th><th>Order</th><th>Payment</th><th>Channel</th><th></th></tr></thead><tbody>${rows.map(c=>`<tr><td><b>${esc(c.customer_phone||"Unknown customer")}</b>${c.needs_human?'<div style="margin-top:5px"><span class="badge warn">Needs a person</span></div>':""}</td><td>${esc((c.last_message?.text||"No messages yet").slice(0,86))}</td><td>${esc(c.order?.items?.map(i=>`${i.quantity} × ${i.name}`).join(", ")||"—")}${c.order?`<div class="hint">${esc(currency)} ${Number(c.order.total).toLocaleString()}</div>`:""}</td><td>${c.payment?`<span class="badge ${c.payment.status==="success"?"":"warn"}">${esc(c.payment.status)}</span>`:"—"}</td><td><span class="badge neutral">${esc(c.channel)}</span></td><td><button class="secondary" data-conversation="${esc(c.id)}">Open</button></td></tr>`).join("")}</tbody></table></div>`;
+    }
+    function renderInbox() {
+      if (!dashboard) return;
+      const needle=$("#conversationSearch").value.trim().toLowerCase();
+      const filtered=dashboard.conversations.filter(c=>{
+        const searchText=`${c.customer_phone} ${c.last_message?.text||""}`.toLowerCase();
+        const matchesFilter=inboxFilter==="all"||(inboxFilter==="orders"&&Boolean(c.order))||(inboxFilter==="handoffs"&&c.needs_human);
+        return matchesFilter&&searchText.includes(needle);
+      });
+      $("#allOrders").innerHTML=conversationTable(filtered,dashboard.business.currency);
+      $("#inboxCount").textContent=`${filtered.length} conversation${filtered.length===1?"":"s"}`;
+    }
+    function render(data) {
+      dashboard=data;
+      const subscription=data.subscription;
+      if(subscription.status==="trialing"){
+        $("#subscriptionBadge").textContent=`Premium trial · ${subscription.trial_days_remaining} days left`;
+        $("#trialMessage").textContent=`Your Premium trial is active for ${subscription.trial_days_remaining} more day${subscription.trial_days_remaining===1?"":"s"}. After it ends, your workspace stays available on the free plan.`;
+        $("#billingForm").hidden=false;
+      }else if(subscription.status==="free"){
+        $("#subscriptionBadge").textContent="Free plan";
+        $("#trialMessage").textContent=`Your Premium trial has ended. Your workspace and existing data remain available on the free plan. Premium costs KES ${Number(subscription.premium_monthly_price_kes).toLocaleString()}/month.`;
+        $("#billingForm").hidden=false;
+      }else if(subscription.status==="premium"){
+        $("#subscriptionBadge").textContent="Premium";
+        $("#trialMessage").textContent=`Premium is active until ${subscription.subscription_expires_at?new Date(subscription.subscription_expires_at*1000).toLocaleDateString():"the end of the billing period"}.`;
+        $("#billingForm").hidden=false;
+      }else if(subscription.status==="grace_period"){
+        $("#subscriptionBadge").textContent="Premium · grace period";
+        $("#trialMessage").textContent=`Renewal is pending. Premium features remain available until ${subscription.grace_expires_at?new Date(subscription.grace_expires_at*1000).toLocaleDateString():"the end of the grace period"}.`;
+        $("#billingForm").hidden=false;
+      }else{
+        $("#subscriptionBadge").textContent="Workspace";
+        $("#trialMessage").textContent="This workspace was created before trial plans were enabled.";
+        $("#billingForm").hidden=true;
+      }
+      if(data.billing_status){
+        const billing=data.billing_status;
+        if(billing.status==="pending"&&billing.needs_review){
+          $("#billingStatus").textContent="Daraja reported success but Hermes did not receive a verified callback. Premium is not activated automatically; contact support with the checkout reference.";
+        }else if(billing.status==="pending"){
+          $("#billingStatus").textContent="Subscription payment is pending provider confirmation.";
+        }else if(billing.status==="paid"){
+          $("#billingStatus").textContent=`Last subscription payment confirmed${billing.receipt?` · receipt ${billing.receipt}`:""}.`;
+        }else if(billing.status==="failed"){
+          $("#billingStatus").textContent="Last subscription payment was not completed. You can start a new M-Pesa prompt.";
+        }
+      }
+      $("#businessName").textContent=data.business.name;
+      $("#ownerEmail").textContent=data.user.email;
+      $("#sidebarBusiness").textContent=data.business.name;
+      $("#sidebarRole").textContent=`${data.user.role} · ${data.user.email}`;
+      $("#accountAvatar").textContent=(data.business.name.trim()[0]||"H").toUpperCase();
+      $("#welcomeTitle").textContent=`Welcome back to ${data.business.name}.`;
+      const m=data.metrics;
+      $("#metrics").innerHTML=[
+        ["Customer conversations",m.total_conversations,"All recorded chats"],
+        ["Orders captured",m.orders_captured,"Started in conversation"],
+        ["Payments confirmed",m.orders_paid,"Provider confirmed"],
+        ["Revenue collected",`${data.business.currency} ${Number(m.revenue_collected).toLocaleString()}`,"Paid orders only"]
+      ].map(([label,value,foot])=>`<div class="card metric-card"><div class="metric-label">${esc(label)}</div><div class="metric">${esc(value)}</div><div class="metric-foot">${esc(foot)}</div></div>`).join("");
+      $("#recentOrders").innerHTML=conversationTable(data.conversations.slice(0,8),data.business.currency);
+      const ordersPct=m.total_conversations?Math.round(m.orders_captured/m.total_conversations*100):0;
+      const paidPct=m.orders_captured?Math.round(m.orders_paid/m.orders_captured*100):0;
+      $("#commerceFunnel").innerHTML=`<div class="progress-row"><span>Conversations</span><div class="progress"><i style="width:100%"></i></div><b>${m.total_conversations}</b></div><div class="progress-row"><span>Orders captured</span><div class="progress"><i style="width:${ordersPct}%"></i></div><b>${m.orders_captured}</b></div><div class="progress-row"><span>Paid orders</span><div class="progress"><i style="width:${paidPct}%"></i></div><b>${m.orders_paid}</b></div><div class="hint">Matched WhatsApp ad referrals and paid conversions appear in Campaigns.</div>`;
+      const checks=[
+        ["Business catalog",data.business.products.length>0,`${data.business.products.length} products`,"catalog"],
+        ["WhatsApp connection",data.integrations.whatsapp_connected,data.integrations.whatsapp_connected?"Number configured":"Connect a number","integrations"],
+        ["Payment collection",data.integrations.mpesa_connected,data.integrations.mpesa_connected?"Daraja credentials saved":"Simulator mode","integrations"],
+        ["Knowledge base",data.documents.length>0,`${data.documents.length} documents`,"knowledge"]
+      ];
+      $("#setupChecklist").innerHTML=checks.map(([label,ready,detail,target])=>`<div class="status-line"><span>${ready?"✓":"○"} ${esc(label)}</span><span class="row"><span class="hint">${esc(detail)}</span>${ready?"":`<button class="filter-chip" data-go="${target}">Set up</button>`}</span></div>`).join("");
+      renderInbox();
+      const paymentConversations=data.conversations.filter(c=>c.payment||c.order);
+      const pendingPayments=data.conversations.filter(c=>c.payment?.status==="pending").length;
+      const failedPayments=data.conversations.filter(c=>c.payment&&["failed","timeout"].includes(c.payment.status)).length;
+      $("#paymentMetrics").innerHTML=[
+        ["Orders",m.orders_captured],["Paid",m.orders_paid],["Pending",pendingPayments],["Needs review",failedPayments]
+      ].map(([label,value])=>`<div class="card metric-card"><div class="metric-label">${esc(label)}</div><div class="metric">${esc(value)}</div><div class="metric-foot">${esc(label==="Paid"?"confirmed payments":"current records")}</div></div>`).join("");
+      const paymentRows=paymentConversations.map(c=>({customer:c.customer_phone,items:c.order?.items?.map(i=>`${i.quantity} × ${i.name}`).join(", ")||"—",amount:c.payment?.amount??c.order?.total??0,status:c.payment?.status??"not started",order:c.order?.status??"—",conversation:c.id}));
+      $("#paymentTable").innerHTML=showTable(paymentRows,[{label:"Customer",value:r=>r.customer},{label:"Order items",value:r=>r.items},{label:"Amount",value:r=>`${data.business.currency} ${Number(r.amount).toLocaleString()}`},{label:"Payment",value:r=>r.status},{label:"Order",value:r=>r.order},{label:"",value:r=>`Open`}]);
+      $("#paymentTable").querySelectorAll("tbody tr").forEach((row,index)=>{row.lastElementChild.innerHTML=`<button class="secondary" data-conversation="${esc(paymentRows[index].conversation)}">View</button>`;});
+      $("#handoffList").innerHTML=data.handoffs.length?data.handoffs.map(h=>`<div class="card" style="margin:10px 0"><div class="row"><b>${esc(h.reason||"Needs follow-up")}</b><span class="badge ${h.status==="resolved"?"":"warn"}">${esc(h.status)}</span></div><p class="muted">Conversation ${esc(h.conversation_id)} · ${new Date(h.created_at*1000).toLocaleString()}</p><div class="actions"><button class="secondary" data-conversation="${esc(h.conversation_id)}">View conversation</button><button class="secondary" data-handoff="${esc(h.id)}" data-status="assigned">Assign to me</button><button data-handoff="${esc(h.id)}" data-status="resolved">Resolve</button></div></div>`).join(""):'<div class="empty">No handoffs. Nice work.</div>';
+      const inventoryByName=new Map(data.inventory.map(item=>[item.product_name.toLowerCase(),item]));
+      $("#inventoryTable").innerHTML=showTable(data.business.products,[{label:"Product",value:p=>p.name},{label:"Price",value:p=>`${data.business.currency} ${Number(p.price).toLocaleString()}`},{label:"On hand",value:p=>inventoryByName.has(p.name.toLowerCase())?inventoryByName.get(p.name.toLowerCase()).quantity:"Not tracked"},{label:"Reserved",value:p=>inventoryByName.has(p.name.toLowerCase())?inventoryByName.get(p.name.toLowerCase()).reserved:"—"},{label:"Available",value:p=>inventoryByName.has(p.name.toLowerCase())?inventoryByName.get(p.name.toLowerCase()).available:"—"}]);
+      $("#inventoryForm [name=product_name]").innerHTML=data.business.products.map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join("");
+      $("#inventoryForm button").disabled=!data.business.products.length;
+      $("#inventoryHistory").innerHTML=showTable(data.inventory_history,[{label:"Product",value:e=>e.product_name},{label:"Change",value:e=>`${e.delta>0?"+":""}${e.delta}`},{label:"Reason",value:e=>e.reason},{label:"When",value:e=>new Date(e.created_at*1000).toLocaleString()}]);
+      $("#bookingTable").innerHTML=data.bookings.length?`<div style="overflow:auto"><table><thead><tr><th>When</th><th>Service</th><th>Customer</th><th>Phone</th><th>Duration</th><th>Status</th><th></th></tr></thead><tbody>${data.bookings.map(b=>`<tr><td>${new Date(b.starts_at*1000).toLocaleString()}</td><td>${esc(b.service)}</td><td>${esc(b.customer_name)}</td><td>${esc(b.customer_phone)}</td><td>${b.duration_minutes} min</td><td>${esc(b.status)}</td><td>${b.status==="confirmed"?`<button class="secondary" data-booking="${esc(b.id)}" data-status="completed">Complete</button> <button class="danger" data-booking="${esc(b.id)}" data-status="cancelled">Cancel</button>`:"—"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No bookings yet.</div>';
+      $("#bookingSettingsForm [name=timezone]").value=data.booking_settings.timezone;
+      $("#bookingSettingsForm [name=weekly_hours]").value=JSON.stringify(data.booking_settings.weekly_hours,null,2);
+      $("#publicBookingLink").href=`${location.origin}/book/${encodeURIComponent(data.business.id)}`;
+      $("#publicBookingLink").textContent=data.booking_settings.enabled?`${location.origin}/book/${data.business.id}`:"Configure business hours to enable";
+      $("#campaignTable").innerHTML=showTable(data.campaigns,[{label:"Campaign",value:c=>c.name},{label:"Channel",value:c=>c.channel},{label:"Source ID",value:c=>c.external_source_id},{label:"Conversations",value:c=>c.attributed_conversations},{label:"Paid orders",value:c=>c.conversions},{label:"Revenue",value:c=>`${data.business.currency} ${Number(c.revenue).toLocaleString()}`}]);
+      $("#products").innerHTML=showTable(data.business.products,[{label:"Product",value:p=>p.name},{label:"Price",value:p=>`${data.business.currency} ${Number(p.price).toLocaleString()}`},{label:"Unit",value:p=>p.unit||"—"},{label:"Availability",value:p=>p.in_stock?"Available":"Out of stock"},{label:"Aliases",value:p=>p.aliases.join(", ")||"—"}]);
+      $("#factsForm [name=facts]").value=Object.entries(data.business.info).map(([key,value])=>`${key}: ${value}`).join("\n");
+      $("#documents").innerHTML=data.documents.length?data.documents.map(d=>`<div class="row" style="padding:10px 0;border-bottom:1px solid #edf1ee"><span>${esc(d.title)} · ${new Date(d.created_at*1000).toLocaleString()}</span><button class="danger right" data-document="${esc(d.id)}">Delete</button></div>`).join(""):'<div class="empty">No documents indexed.</div>';
+      $("#integrationStatus").textContent=`WhatsApp: ${data.integrations.whatsapp_connected?"configured":"not configured"}; webhook signature: ${data.integrations.whatsapp_webhook_secured?"configured":"not configured"}; M-Pesa: ${data.integrations.mpesa_connected?"configured":"simulator"}; embeddings: ${data.integrations.embeddings_configured?"enabled with consent":"BM25 only"}. Secrets are never shown.`;
+      $("#integrationForm [name=embedding_consent]").checked=data.integrations.embedding_consent;
+      $("#integrationForm [name=llm_data_consent]").checked=data.integrations.llm_data_consent;
+      $("#integrationForm [name=whatsapp_phone_number_id]").value=data.integrations.whatsapp_phone_number_id;
+      $("#integrationForm [name=mpesa_environment]").value=data.integrations.mpesa_environment;
+      $("#integrationForm [name=mpesa_shortcode]").value=data.integrations.mpesa_shortcode;
+      $("#integrationForm [name=embedding_base_url]").value=data.integrations.embedding_base_url;
+      $("#integrationForm [name=embedding_model]").value=data.integrations.embedding_model;
+      $("#integrationForm [name=chat_base_url]").value=data.integrations.chat_base_url;
+      $("#integrationForm [name=chat_model]").value=data.integrations.chat_model;
+      $("#templateList").innerHTML=data.whatsapp_templates.length?`<div style="overflow:auto"><table><thead><tr><th>Template</th><th>Language</th><th>Category</th><th>Body variables</th><th>Status</th><th></th></tr></thead><tbody>${data.whatsapp_templates.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(t.language)}</td><td>${esc(t.category)}</td><td>${t.body_parameter_count}</td><td>${t.active?"Approved":"Disabled"}</td><td><button class="${t.active?"danger":"secondary"}" data-template="${esc(t.id)}" data-active="${t.active?"false":"true"}">${t.active?"Disable":"Re-enable"}</button></td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No templates saved.</div>';
+      $("#followupForm [name=template_id]").innerHTML=data.whatsapp_templates.map(t=>`<option value="${esc(t.id)}">${esc(t.name)} (${esc(t.language)})</option>`).join("");
+      $("#followupForm button").disabled=!data.whatsapp_templates.length;
+      $("#followupList").innerHTML=data.whatsapp_followups.length?`<div style="overflow:auto"><table><thead><tr><th>Send time</th><th>Customer</th><th>Template</th><th>Status</th><th></th></tr></thead><tbody>${data.whatsapp_followups.map(f=>`<tr><td>${new Date(f.send_at*1000).toLocaleString()}</td><td>${esc(f.phone)}</td><td>${esc(f.template_name)}</td><td>${esc(f.status)}</td><td>${f.status==="pending"?`<button class="danger" data-followup="${esc(f.id)}">Cancel</button>`:"—"}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">No follow-ups scheduled.</div>';
+      showApp();
+    }
+    async function refresh() { render(await api("/api/dashboard")); }
+    function showVerificationPrompt(message,email=""){
+      $("#loginForm").hidden=true;$("#registerForm").hidden=true;$("#verifyForm").hidden=true;$("#resendForm").hidden=false;
+      $("#resendForm [name=email]").value=email;$("#authTitle").textContent="Verify your email";
+      $("#authDescription").textContent="A verification link is required before you can sign in.";
+      $("#toggleAuth").hidden=false;$("#toggleAuth").textContent="Back to sign in";$("#authMessage").textContent=message;
+    }
+    $("#toggleAuth").addEventListener("click",()=>{const signup=$("#registerForm").hidden;$("#verifyForm").hidden=true;$("#resendForm").hidden=true;$("#registerForm").hidden=!signup;$("#loginForm").hidden=signup;$("#inviteLabel").hidden=!publicConfig.invite_required;$("#registerForm [name=invite_code]").required=publicConfig.invite_required;$("#authTitle").textContent=signup?"Create your workspace":"Welcome back";$("#authDescription").textContent=signup?"Verify your email to start a 7-day Premium trial.":"Sign in to your merchant workspace.";$("#toggleAuth").textContent=signup?"Back to sign in":"Create a free trial workspace";$("#toggleAuth").hidden=false;$("#authMessage").textContent="";});
+    $("#loginForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("/auth/login",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});await refresh();}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#registerForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/auth/register",{method:"POST",body:JSON.stringify(values)});showVerificationPrompt("Check your inbox for a one-time verification link.",values.email);}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#verifyForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("/auth/verify-email",{method:"POST",body:JSON.stringify({token:verificationToken})});verificationToken=null;history.replaceState(null,"",location.pathname);await refresh();}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#resendForm").addEventListener("submit",async e=>{e.preventDefault();const email=e.target.elements.email.value;try{await api("/auth/verification/resend",{method:"POST",body:JSON.stringify({email})});$("#authMessage").textContent="If that address has an unverified workspace, a new link has been sent.";}catch(err){$("#authMessage").textContent=err.message;}});
+    $("#logout").addEventListener("click",async()=>{await api("/auth/logout",{method:"POST",body:"{}"});showAuth();});
+    document.querySelectorAll(".nav").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll(".nav,.section").forEach(el=>el.classList.remove("active"));button.classList.add("active");$("#"+button.dataset.section).classList.add("active");}));
+    document.querySelectorAll("[data-go]").forEach(button=>button.addEventListener("click",()=>document.querySelector(`.nav[data-section="${button.dataset.go}"]`).click()));
+    $("#conversationSearch").addEventListener("input",renderInbox);
+    document.querySelectorAll("[data-filter]").forEach(button=>button.addEventListener("click",()=>{inboxFilter=button.dataset.filter;document.querySelectorAll("[data-filter]").forEach(chip=>chip.classList.toggle("active",chip===button));renderInbox();}));
+    $("#simulatorForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));if(values.phone!==simulatorPhone){simulatorConversationId=null;simulatorPhone=values.phone;$("#simulatorTranscript").replaceChildren();}try{const result=await api("/api/simulator/chat",{method:"POST",body:JSON.stringify({...values,conversation_id:simulatorConversationId})});simulatorConversationId=result.conversation_id;$("#simulatorTranscript").insertAdjacentHTML("beforeend",`<div class="card"><b>You</b><p>${esc(values.text)}</p></div><div class="card"><b>Hermes</b><p>${esc(result.reply)}</p>${result.needs_human?'<span class="badge warn">Needs staff follow-up</span>':""}</div>`);e.target.elements.text.value="";await refresh();}catch(err){notice(err.message,true);}});
+    $("#productForm").addEventListener("submit",async e=>{e.preventDefault();const form=Object.fromEntries(new FormData(e.target));const product={name:form.name,price:Number(form.price),unit:form.unit,aliases:form.aliases.split(",").map(x=>x.trim()).filter(Boolean),in_stock:e.target.elements.in_stock.checked};try{await api("/api/catalog",{method:"PUT",body:JSON.stringify({products:[...dashboard.business.products,product],info:dashboard.business.info})});e.target.reset();await refresh();notice("Product saved.");}catch(err){notice(err.message,true);}});
+    $("#inventoryForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/inventory",{method:"PUT",body:JSON.stringify({...values,quantity:Number(values.quantity)})});e.target.elements.quantity.value="";e.target.elements.reason.value="";await refresh();notice("Stock count updated.");}catch(err){notice(err.message,true);}});
+    $("#bookingForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/bookings",{method:"POST",body:JSON.stringify({...values,starts_at:new Date(values.starts_at).toISOString(),duration_minutes:Number(values.duration_minutes)})});e.target.reset();e.target.elements.duration_minutes.value="60";await refresh();notice("Booking created.");}catch(err){notice(err.message,true);}});
+    $("#bookingSettingsForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/bookings/settings",{method:"PUT",body:JSON.stringify({timezone:values.timezone,weekly_hours:JSON.parse(values.weekly_hours)})});await refresh();notice("Booking hours saved.");}catch(err){notice(err.message,true);}});
+    $("#bookingTable").addEventListener("click",async e=>{const button=e.target.closest("[data-booking]");if(!button)return;try{await api(`/api/bookings/${encodeURIComponent(button.dataset.booking)}`,{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});await refresh();notice("Booking updated.");}catch(err){notice(err.message,true);}});
+    $("#campaignForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/campaigns",{method:"POST",body:JSON.stringify(values)});e.target.reset();await refresh();notice("Campaign source saved.");}catch(err){notice(err.message,true);}});
+    $("#billingForm").addEventListener("submit",async e=>{e.preventDefault();$("#billingStatus").textContent="Requesting M-Pesa payment...";try{const result=await api("/api/billing/checkout",{method:"POST",body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});$("#billingStatus").textContent=`${result.message} Amount: KES ${Number(result.amount_kes).toLocaleString()}. Waiting for Daraja confirmation...`;for(let attempt=0;attempt<24;attempt++){await new Promise(resolve=>setTimeout(resolve,5000));const state=await api("/api/billing/status");if(state?.status==="paid"||state?.status==="failed"){await refresh();break;}}}catch(err){$("#billingStatus").textContent=err.message;}});
+    $("#templateForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/whatsapp/templates",{method:"POST",body:JSON.stringify({...values,body_parameter_count:Number(values.body_parameter_count),meta_approval_confirmed:e.target.elements.meta_approval_confirmed.checked})});e.target.reset();e.target.elements.language.value="en";e.target.elements.body_parameter_count.value="0";await refresh();notice("Approved template saved.");}catch(err){notice(err.message,true);}});
+    $("#templateList").addEventListener("click",async e=>{const button=e.target.closest("[data-template]");if(!button)return;try{await api(`/api/whatsapp/templates/${encodeURIComponent(button.dataset.template)}`,{method:"PATCH",body:JSON.stringify({meta_approval_confirmed:button.dataset.active==="true"})});await refresh();notice("Template status updated.");}catch(err){notice(err.message,true);}});
+    $("#consentForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));try{await api("/api/whatsapp/consent",{method:"POST",body:JSON.stringify({...values,opted_in:values.opted_in==="true"})});e.target.reset();await refresh();notice("Customer messaging permission saved.");}catch(err){notice(err.message,true);}});
+    $("#followupForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));const parameters=values.parameters.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);try{await api("/api/whatsapp/follow-ups",{method:"POST",body:JSON.stringify({...values,parameters,send_at:new Date(values.send_at).toISOString()})});e.target.reset();await refresh();notice("Follow-up scheduled.");}catch(err){notice(err.message,true);}});
+    $("#followupList").addEventListener("click",async e=>{const button=e.target.closest("[data-followup]");if(!button)return;try{await api(`/api/whatsapp/follow-ups/${encodeURIComponent(button.dataset.followup)}`,{method:"DELETE"});await refresh();notice("Follow-up cancelled.");}catch(err){notice(err.message,true);}});
+    $("#factsForm").addEventListener("submit",async e=>{e.preventDefault();const info={};for(const line of new FormData(e.target).get("facts").split("\n")){const index=line.indexOf(":");if(index>0)info[line.slice(0,index).trim()]=line.slice(index+1).trim();}try{await api("/api/catalog",{method:"PUT",body:JSON.stringify({products:dashboard.business.products,info})});await refresh();notice("Business facts saved.");}catch(err){notice(err.message,true);}});
+    $("#fileUploadForm").addEventListener("submit",async e=>{e.preventDefault();const files=Array.from(e.target.elements.files.files);const failures=[];let indexed=0;for(const file of files){const body=new FormData();body.append("file",file,file.name);body.append("consent_external_embedding",String($("#embeddingConsent").checked));try{await api("/api/knowledge/upload",{method:"POST",body});indexed++;}catch(err){failures.push(`${file.name}: ${err.message}`);}}e.target.reset();if(indexed)await refresh();notice(`${indexed} file${indexed===1?"":"s"} indexed${failures.length?`. ${failures.join(" | ")}`:"."}`,failures.length>0);});
+    $("#documentForm").addEventListener("submit",async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.consent_external_embedding=$("#embeddingConsent").checked;try{await api("/api/knowledge/documents",{method:"POST",body:JSON.stringify(values)});e.target.reset();await refresh();notice("Document indexed.");}catch(err){notice(err.message,true);}});
+    $("#knowledgeSearchForm").addEventListener("submit",async e=>{e.preventDefault();const query=new FormData(e.target).get("query");try{const result=await api("/api/knowledge/search",{method:"POST",body:JSON.stringify({query})});$("#knowledgeResults").innerHTML=result.results.length?result.results.map(item=>`<div class="card" style="margin-top:10px"><b>${esc(item.title)}</b><p>${esc(item.text)}</p><span class="hint">Relevance ${Number(item.score).toFixed(3)}</span></div>`).join(""):'<div class="empty">No relevant passage found.</div>';}catch(err){notice(err.message,true);}});
+    $("#integrationForm").addEventListener("submit",async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));const mpesa={MPESA_CONSUMER_KEY:f.mpesa_consumer_key||"",MPESA_CONSUMER_SECRET:f.mpesa_consumer_secret||"",MPESA_SHORTCODE:f.mpesa_shortcode||"",MPESA_PASSKEY:f.mpesa_passkey||"",MPESA_CALLBACK_URL:f.mpesa_callback_url||"",MPESA_ENVIRONMENT:f.mpesa_environment||"sandbox"};const llm={embedding_api_key:f.embedding_api_key||"",embedding_base_url:f.embedding_base_url||"https://api.openai.com/v1",embedding_model:f.embedding_model||"text-embedding-3-small",chat_api_key:f.chat_api_key||"",chat_base_url:f.chat_base_url||"https://api.openai.com/v1",chat_model:f.chat_model||"gpt-4o-mini"};try{await api("/api/integrations",{method:"PUT",body:JSON.stringify({whatsapp_phone_number_id:f.whatsapp_phone_number_id||"",whatsapp_token:f.whatsapp_token||"",whatsapp_app_secret:f.whatsapp_app_secret||"",whatsapp_verify_token:f.whatsapp_verify_token||"",mpesa_credentials:mpesa,llm_credentials:llm,embedding_consent:e.target.elements.embedding_consent.checked,llm_data_consent:e.target.elements.llm_data_consent.checked})});e.target.reset();await refresh();notice("Encrypted integration settings saved.");}catch(err){notice(err.message,true);}});
+    $("#rehearseIntegrations").addEventListener("click",async()=>{const output=$("#rehearsalStatus");output.textContent="Checking provider access...";try{const result=await api("/api/integrations/rehearse",{method:"POST",body:"{}"});output.textContent=`WhatsApp: ${result.whatsapp}. M-Pesa: ${result.mpesa}. ${result.side_effects}`;}catch(err){output.textContent=err.message;}});
+    $(".content").addEventListener("click",async e=>{const goButton=e.target.closest("[data-go]");if(goButton){document.querySelector(`.nav[data-section="${goButton.dataset.go}"]`).click();return;}const button=e.target.closest("[data-conversation]");if(!button)return;if(button.closest("#handoffList"))document.querySelector('.nav[data-section="orders"]').click();try{const detail=await api(`/api/conversations/${encodeURIComponent(button.dataset.conversation)}`);const current=dashboard.conversations.find(c=>c.id===detail.id);$("#conversationTitle").textContent=current?.customer_phone||"Conversation";$("#conversationChannel").textContent=current?.channel||"Conversation";$("#conversationDetail").className="message-list";$("#conversationDetail").innerHTML=detail.messages.length?detail.messages.map(message=>`<div class="message-bubble ${message.role==="agent"?"agent":""}"><div class="message-meta">${esc(message.role)} · ${new Date(message.timestamp*1000).toLocaleString()}</div>${esc(message.text)}</div>`).join(""):'<div class="empty">No message history is available.</div>';const latestCustomer=[...detail.messages].reverse().find(message=>message.role==="customer");const openHandoff=dashboard.handoffs.some(h=>h.conversation_id===detail.id&&h.status!=="resolved");const order=detail.order;const payment=detail.payment;$("#conversationSummary").innerHTML=`<div class="summary-box"><div class="eyebrow">Conversation recap</div><p>${latestCustomer?`Last customer message: “${esc(latestCustomer.text.slice(0,240))}”`:"No customer message recorded."}</p><div class="hint">Extracted from the saved thread; no external AI summary call is made.</div></div><div class="status-line"><span>Order</span><b>${order?esc(order.status):"No order"}</b></div>${order?`<div class="status-line"><span>Items</span><b>${esc(order.items.map(i=>`${i.quantity} × ${i.name}`).join(", "))}</b></div><div class="status-line"><span>Total</span><b>${esc(dashboard.business.currency)} ${Number(order.total).toLocaleString()}</b></div>`:""}<div class="status-line"><span>Payment</span><b>${payment?esc(payment.status):"Not started"}</b></div><div class="status-line"><span>Staff follow-up</span><b>${openHandoff?"Open":"Not needed"}</b></div><div class="actions" style="margin-top:14px"><button class="secondary" data-go="handoffs">Open staff inbox</button></div>`;$("#conversationDetail").scrollTop=$("#conversationDetail").scrollHeight;}catch(err){notice(err.message,true);}});
+    $("#handoffList").addEventListener("click",async e=>{const button=e.target.closest("[data-handoff]");if(!button)return;try{await api(`/api/handoffs/${button.dataset.handoff}`,{method:"PATCH",body:JSON.stringify({status:button.dataset.status})});await refresh();notice("Handoff updated.");}catch(err){notice(err.message,true);}});
+    $("#documents").addEventListener("click",async e=>{const button=e.target.closest("[data-document]");if(!button)return;try{await api(`/api/knowledge/documents/${button.dataset.document}`,{method:"DELETE"});await refresh();}catch(err){notice(err.message,true);}});
+    $("#deleteAccount").addEventListener("click",async()=>{if(!confirm("Permanently delete this merchant and all its data? This cannot be undone."))return;try{await api("/api/account",{method:"DELETE"});showAuth();notice("Merchant data deleted.");}catch(err){notice(err.message,true);}});
+    fetch("/public/config").then(response=>{if(!response.ok)throw new Error("Could not load signup settings");return response.json();}).then(config=>{publicConfig=config;$("#toggleAuth").hidden=!config.signup_enabled;$("#inviteLabel").hidden=!config.invite_required;$("#registerForm [name=invite_code]").required=config.invite_required;if(!config.signup_enabled)$("#authMessage").textContent="Account creation is unavailable until email delivery is configured.";if(verificationToken){$("#loginForm").hidden=true;$("#registerForm").hidden=true;$("#verifyForm").hidden=false;$("#resendForm").hidden=true;$("#toggleAuth").hidden=true;$("#authTitle").textContent="Verify your email";$("#authDescription").textContent="Continue only if you requested a Hermes workspace.";history.replaceState(null,"",location.pathname);}}).catch(()=>{$("#authMessage").textContent="Signup settings could not be loaded. Please refresh the page.";});
+    api("/api/dashboard").then(render).catch(()=>showAuth());
+  </script>
+</body>
+</html>

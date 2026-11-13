@@ -41,7 +41,7 @@ def main() -> None:
 
     for phone, messages, pay, success in SCRIPTS:
         agent = Agent(biz, MockLLM(), sim)
-        conv = Conversation(customer_phone=phone, channel="whatsapp")
+        conv = Conversation(business_id=biz.id, customer_phone=phone, channel="whatsapp")
         for text in messages:
             agent.handle_message(conv, text)
         if pay and conv.payment is not None:
@@ -49,7 +49,7 @@ def main() -> None:
             agent.handle_message(conv, "have you received the payment?")
         store.save(conv)
 
-    m = store.metrics()
+    m = store.metrics(business_id=biz.id)
     print(f"Seeded {DB_PATH}")
     print(
         f"  conversations={m['total_conversations']} deflection={m['deflection_rate']:.0%} "

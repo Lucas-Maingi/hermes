@@ -82,6 +82,14 @@ class TestCaptureOrderTool:
         out = capture_order({"item": "salt", "quantity": 1}, ctx)
         assert "out of stock" in out.lower()
 
+    def test_quantity_above_tracked_stock_is_refused(self):
+        ctx, biz, conv = make_ctx()
+        product = biz.find_product("bread")
+        product.stock_quantity = 2
+        out = capture_order({"item": "bread", "quantity": 3}, ctx)
+        assert "only have 2" in out.lower()
+        assert conv.order is None
+
     def test_accumulates_multiple_items(self):
         ctx, _, conv = make_ctx()
         capture_order({"item": "bread", "quantity": 2}, ctx)
@@ -99,5 +107,6 @@ class TestEscalateTool:
         ctx, _, conv = make_ctx()
         out = escalate_to_human({"reason": "angry customer"}, ctx)
         assert conv.needs_human is True
-        assert "connecting you" in out.lower()
+        assert "flagged your request" in out.lower()
+        assert "staff inbox" in out.lower()
         assert conv.order is None or conv.order.status != OrderStatus.PAID

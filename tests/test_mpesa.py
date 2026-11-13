@@ -72,7 +72,18 @@ class TestFactory:
     def test_returns_simulator_without_credentials(self, monkeypatch):
         for k in ["MPESA_CONSUMER_KEY", "MPESA_CONSUMER_SECRET", "MPESA_SHORTCODE", "MPESA_PASSKEY", "MPESA_CALLBACK_URL"]:
             monkeypatch.delenv(k, raising=False)
+        monkeypatch.delenv("MPESA_ENVIRONMENT", raising=False)
         assert isinstance(get_mpesa_client(), MpesaSimulator)
+
+    def test_partial_credentials_do_not_silently_enable_simulator(self, monkeypatch):
+        monkeypatch.setenv("MPESA_CONSUMER_KEY", "configured")
+        with pytest.raises(ValueError, match="MPESA_CONSUMER_SECRET"):
+            get_mpesa_client()
+
+    def test_production_environment_requires_real_credentials(self, monkeypatch):
+        monkeypatch.setenv("MPESA_ENVIRONMENT", "production")
+        with pytest.raises(ValueError, match="Incomplete M-Pesa configuration"):
+            get_mpesa_client()
 
     def test_returns_daraja_when_fully_configured(self, monkeypatch):
         for k, v in {
@@ -85,6 +96,20 @@ class TestFactory:
             monkeypatch.setenv(k, v)
         client = get_mpesa_client()
         assert type(client).__name__ == "DarajaClient"
+
+    def test_tenant_credentials_do_not_inherit_global_merchant_credentials(self, monkeypatch):
+        for key, value in {
+            "MPESA_CONSUMER_KEY": "global-key",
+            "MPESA_CONSUMER_SECRET": "global-secret",
+            "MPESA_SHORTCODE": "174379",
+            "MPESA_PASSKEY": "global-passkey",
+            "MPESA_CALLBACK_URL": "https://example.test/mpesa/callback",
+            "MPESA_ENVIRONMENT": "sandbox",
+        }.items():
+            monkeypatch.setenv(key, value)
+        assert isinstance(get_mpesa_client({}), MpesaSimulator)
+        with pytest.raises(ValueError, match="MPESA_CONSUMER_SECRET"):
+            get_mpesa_client({"MPESA_CONSUMER_KEY": "tenant-key"})
 
 
 class TestPaymentTools:
@@ -110,7 +135,15 @@ class TestPaymentTools:
         assert conv.order.status == OrderStatus.AWAITING_PAYMENT
         assert "360" in out
 
-    def test_check_payment_confirms_once_completed(self):
+    def test_stk_push_uses_customer_phone_not_model_supplied_phone(self):
+        sim = MpesaSimulator()
+        ctx, conv = self.make_ctx_with_order(mpesa=sim)
+        conv.customer_phone = "254712345678"
+        mpesa_stk_push({"phone": "254799999999"}, ctx)
+
+        assert conv.payment.phone == "254712345678"
+
+    def test_status_query_success_waits_for_verified_callback(self):
         sim = MpesaSimulator()
         ctx, conv = self.make_ctx_with_order(mpesa=sim)
         mpesa_stk_push({}, ctx)
@@ -119,8 +152,10 @@ class TestPaymentTools:
         # customer pays
         sim.complete_payment(conv.payment.checkout_request_id, success=True)
         out = check_payment({}, ctx)
-        assert conv.order.status == OrderStatus.PAID
-        assert "received" in out.lower()
+        assert conv.payment.status == PaymentStatus.PENDING
+        assert conv.order.status == OrderStatus.AWAITING_PAYMENT
+        assert conv.needs_human is True
+        assert "waiting for the payment receipt callback" in out.lower()
 
     def test_check_payment_without_pending_payment(self):
         biz = sample_business()
@@ -135,6 +170,9 @@ class TestRegistry:
             "lookup_knowledge",
             "capture_order",
             "escalate_to_human",
+            "set_delivery_note",
+            "remove_order_item",
+            "cancel_order",
             "mpesa_stk_push",
             "check_payment",
         }

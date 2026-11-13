@@ -60,7 +60,10 @@ def get_llm_client() -> LLMClient:
         cfg = _PROVIDER_DEFAULTS[provider]
         api_key = os.getenv(cfg["key_env"])
         if not api_key:
-            return MockLLM()
+            raise ValueError(
+                f"HERMES_LLM_PROVIDER={provider} requires {cfg['key_env']}; "
+                "use HERMES_LLM_PROVIDER=auto or mock for the simulator."
+            )
         return OpenAICompatibleLLM(
             api_key=api_key,
             model=os.getenv("HERMES_LLM_MODEL", cfg["model"]),
@@ -79,4 +82,7 @@ def get_llm_client() -> LLMClient:
             base_url=base_url,
         )
 
-    return MockLLM()
+    raise ValueError(
+        "A custom LLM provider requires HERMES_LLM_API_KEY and HERMES_LLM_BASE_URL; "
+        "use HERMES_LLM_PROVIDER=auto or mock for the simulator."
+    )

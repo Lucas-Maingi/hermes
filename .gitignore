@@ -17,5 +17,7 @@ htmlcov/
 
 # Local databases (runtime state, not source)
 *.db
+*.sqlite3
+backups/
 
 .env

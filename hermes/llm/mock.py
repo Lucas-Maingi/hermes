@@ -33,6 +33,9 @@ _PAY_RE = re.compile(r"\b(pay|payment|checkout|mpesa|m-pesa|nlipe|nilipe|lipa|na
 _HUMAN_RE = re.compile(
     r"\b(human|person|agent|someone|manager|talk to|speak to|mtu|real person|customer care)\b", re.I
 )
+_CANCEL_RE = re.compile(r"\b(cancel|cancel my order|stop my order|futa agizo)\b", re.I)
+_REMOVE_RE = re.compile(r"\b(remove|take off|delete)\b", re.I)
+_DELIVERY_NOTE_RE = re.compile(r"\b(deliver to|delivery note|bring it to|address is)\b", re.I)
 _ORDER_INTENT_RE = re.compile(r"\b(order|buy|want|need|nataka|nipe|niletee|get me|add)\b", re.I)
 
 # quantity + item, e.g. "2 maize flour", "3 sacks of sugar", "nataka 5 unga"
@@ -63,6 +66,28 @@ class MockLLM:
         if _HUMAN_RE.search(text) and "escalate_to_human" in tool_names:
             return LLMResponse(
                 tool_calls=[ToolCall(name="escalate_to_human", arguments={"reason": "customer_requested"})]
+            )
+
+        if _CANCEL_RE.search(text) and "cancel_order" in tool_names:
+            return LLMResponse(tool_calls=[ToolCall(name="cancel_order", arguments={})])
+
+        if _REMOVE_RE.search(text) and "remove_order_item" in tool_names:
+            items = self._parse_items(text)
+            if items:
+                qty, name = items[0]
+                return LLMResponse(
+                    tool_calls=[
+                        ToolCall(
+                            name="remove_order_item",
+                            arguments={"item": name, "quantity": qty},
+                        )
+                    ]
+                )
+
+        if _DELIVERY_NOTE_RE.search(text) and "set_delivery_note" in tool_names:
+            note = re.split(_DELIVERY_NOTE_RE, text, maxsplit=1)[-1].strip(" :,-")
+            return LLMResponse(
+                tool_calls=[ToolCall(name="set_delivery_note", arguments={"note": note})]
             )
 
         # 2. Checking on an existing payment -> query its status.
@@ -155,5 +180,25 @@ def default_tools() -> list[ToolSpec]:
             "asks for a person, is upset, or asks something you cannot answer from the catalog.",
             parameters={"reason": {"type": "string", "description": "Short reason for handoff"}},
             required=["reason"],
+        ),
+        ToolSpec(
+            name="set_delivery_note",
+            description="Add customer-provided delivery instructions to an unpaid order.",
+            parameters={"note": {"type": "string", "description": "Delivery instructions"}},
+            required=["note"],
+        ),
+        ToolSpec(
+            name="remove_order_item",
+            description="Remove a quantity of a product from an unpaid order.",
+            parameters={
+                "item": {"type": "string", "description": "Product to remove"},
+                "quantity": {"type": "integer", "description": "Quantity to remove"},
+            },
+            required=["item", "quantity"],
+        ),
+        ToolSpec(
+            name="cancel_order",
+            description="Cancel an unpaid order. Payment-in-progress and paid orders are handed to staff.",
+            parameters={},
         ),
     ]

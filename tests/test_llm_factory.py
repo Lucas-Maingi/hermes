@@ -26,10 +26,15 @@ class TestFactory:
         assert type(client).__name__ == "OpenAICompatibleLLM"
         assert client.model  # a default model is set
 
-    def test_provider_named_without_key_falls_back_to_mock(self, monkeypatch):
+    def test_provider_named_without_key_fails_clearly(self, monkeypatch):
         monkeypatch.setenv("HERMES_LLM_PROVIDER", "groq")
-        # no GROQ_API_KEY set
-        assert isinstance(get_llm_client(), MockLLM)
+        with pytest.raises(ValueError, match="GROQ_API_KEY"):
+            get_llm_client()
+
+    def test_incomplete_custom_provider_fails_clearly(self, monkeypatch):
+        monkeypatch.setenv("HERMES_LLM_PROVIDER", "openai_compatible")
+        with pytest.raises(ValueError, match="HERMES_LLM_API_KEY"):
+            get_llm_client()
 
     def test_custom_openai_compatible_endpoint(self, monkeypatch):
         monkeypatch.setenv("HERMES_LLM_PROVIDER", "openai_compatible")

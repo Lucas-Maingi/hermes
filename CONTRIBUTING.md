@@ -30,7 +30,7 @@ Rules for payment adapters specifically:
 
 ## Webhook security
 
-Inbound WhatsApp POSTs are verified against Meta's `X-Hub-Signature-256` when `WHATSAPP_APP_SECRET` is set (see `verify_signature` in [hermes/whatsapp.py](hermes/whatsapp.py)). If you add a new inbound surface, it needs the equivalent: authenticate the caller or document explicitly why it's safe not to.
+Inbound WhatsApp POSTs require Meta's `X-Hub-Signature-256` verification with `WHATSAPP_APP_SECRET` (see `verify_signature` in [hermes/whatsapp.py](hermes/whatsapp.py)). Missing secrets reject requests. If you add a new inbound surface, it needs equivalent authentication or an explicit explanation of why it is safe without it.
 
 ## Running checks
 

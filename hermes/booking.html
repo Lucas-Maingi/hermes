@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Book an appointment | Hermes</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#142d39;background:#f4f7f8}
+    *{box-sizing:border-box}body{margin:0;padding:24px}.card{max-width:680px;margin:5vh auto;background:white;border:1px solid #e1e9eb;border-radius:20px;padding:clamp(20px,5vw,40px);box-shadow:0 18px 55px #183b4810}
+    h1{margin-top:0;font-size:clamp(26px,5vw,38px)}p{color:#687c85;line-height:1.55}.stack{display:grid;gap:15px;margin-top:24px}
+    label{display:grid;gap:7px;font-size:13px;font-weight:650;color:#405761}input,select,textarea,button{font:inherit;border-radius:10px;padding:11px 12px}
+    input,select,textarea{width:100%;border:1px solid #d8e2e4;background:white;color:#142d39}button{border:0;background:#169d66;color:white;font-weight:700;cursor:pointer}
+    button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #31ba8055;outline-offset:2px}.notice{padding:12px;border-radius:10px;background:#e8f6ee;color:#285d43}.notice.error{background:#fff0ee;color:#8f2f28}
+    .secondary{background:#eef3f4;color:#264957}.muted{font-size:13px;color:#71838b}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <span class="muted">Hermes appointment booking</span>
+    <h1>Choose a time</h1>
+    <p>Pick an available 30-minute slot. Your contact details are used only to manage this booking.</p>
+    <div id="status" role="status" aria-live="polite"></div>
+    <form id="availabilityForm" class="stack">
+      <label>Service<input name="service" required maxlength="120"></label>
+      <label>Date<input name="day" type="date" required></label>
+      <button class="secondary">Show available times</button>
+      <label>Available time<select name="starts_at" required><option value="">Select a date first</option></select></label>
+    </form>
+    <form id="bookingForm" class="stack">
+      <label>Your name<input name="customer_name" required maxlength="120" autocomplete="name"></label>
+      <label>WhatsApp / phone<input name="customer_phone" required maxlength="40" autocomplete="tel"></label>
+      <label>Notes (optional)<textarea name="notes" maxlength="2000"></textarea></label>
+      <button>Confirm booking</button>
+    </form>
+    <hr style="border:0;border-top:1px solid #e7edef;margin:30px 0">
+    <h2>Cancel a booking</h2>
+    <p class="muted">Use the booking reference shown after confirmation and the phone number used when booking.</p>
+    <form id="cancelForm" class="stack">
+      <label>Booking reference<input name="booking_id" required></label>
+      <label>Phone number<input name="phone" required maxlength="40"></label>
+      <button class="secondary">Cancel booking</button>
+    </form>
+  </main>
+  <script>
+    const businessId = "__BUSINESS_ID__";
+    const statusBox = document.querySelector("#status");
+    const availabilityForm = document.querySelector("#availabilityForm");
+    const api = async (path, options = {}) => {
+      const response = await fetch(path, {
+        ...options,
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || `Request failed (${response.status})`);
+      return body;
+    };
+    const showStatus = (message, error = false) => {
+      statusBox.className = `notice${error ? " error" : ""}`;
+      statusBox.textContent = message;
+    };
+    availabilityForm.elements.day.min = new Date().toISOString().slice(0, 10);
+    availabilityForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const day = availabilityForm.elements.day.value;
+      try {
+        const result = await api(`/public/bookings/${encodeURIComponent(businessId)}/availability?day=${encodeURIComponent(day)}`);
+        const select = availabilityForm.elements.starts_at;
+        select.replaceChildren(new Option("Select a time", ""));
+        for (const slot of result.slots) {
+          select.add(new Option(`${slot.local_time} (${result.timezone})`, slot.starts_at));
+        }
+        showStatus(result.slots.length ? "Choose an available time below." : "No available times for this date.");
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    });
+    document.querySelector("#bookingForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const startsAt = availabilityForm.elements.starts_at.value;
+      if (!startsAt) return showStatus("Select an available time first.", true);
+      const payload = Object.fromEntries(new FormData(form));
+      payload.service = availabilityForm.elements.service.value;
+      payload.starts_at = startsAt;
+      try {
+        const booking = await api(`/public/bookings/${encodeURIComponent(businessId)}`, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        document.querySelector("#cancelForm").elements.booking_id.value = booking.id;
+        showStatus(`Booking confirmed. Reference: ${booking.id}. Save this reference to cancel later.`);
+        form.reset();
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    });
+    document.querySelector("#cancelForm").addEventListener("submit", async event => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      try {
+        await api(`/public/bookings/${encodeURIComponent(businessId)}/${encodeURIComponent(values.booking_id)}/cancel`, {
+          method: "POST",
+          body: JSON.stringify({ phone: values.phone })
+        });
+        showStatus("Booking cancelled.");
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

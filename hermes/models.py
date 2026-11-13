@@ -97,6 +97,7 @@ class Payment:
 @dataclass
 class Conversation:
     id: str = field(default_factory=lambda: _new_id("conv"))
+    business_id: str = "duka_demo"
     customer_phone: str = ""
     channel: str = "simulator"   # "whatsapp" | "simulator"
     messages: list[Message] = field(default_factory=list)

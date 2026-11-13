@@ -31,6 +31,12 @@ class ToolContext:
 def lookup_knowledge(args: dict, ctx: ToolContext) -> str:
     query = str(args.get("query", "")).strip()
     result = knowledge.answer(query, ctx.business)
+    if result is None and ctx.extra.get("retriever"):
+        passages = ctx.extra["retriever"].search(ctx.business.id, query, limit=3)
+        if passages:
+            result = "\n".join(
+                f"From {passage['title']}: {passage['text']}" for passage in passages
+            )
     if result is None:
         # Honest miss -> flag for handoff; the agent will relay this.
         ctx.conversation.needs_human = True
@@ -57,10 +63,31 @@ def capture_order(args: dict, ctx: ToolContext) -> str:
         )
     if not product.in_stock:
         return f"Sorry, {product.name} is out of stock right now."
-
     conv = ctx.conversation
+    order = conv.order or Order()
+    existing_quantity = sum(
+        line.quantity for line in order.items if line.name.casefold() == product.name.casefold()
+    )
+    if product.stock_quantity is not None and existing_quantity + quantity > product.stock_quantity:
+        return (
+            f"Sorry, we only have {max(0, product.stock_quantity - existing_quantity)} "
+            f"{product.name} available right now. "
+            "Would you like to adjust the quantity?"
+        )
+
+    planned_items = [
+        {"name": line.name, "quantity": line.quantity}
+        for line in order.items
+    ]
+    planned_items.append({"name": product.name, "quantity": quantity})
+    platform = ctx.extra.get("platform")
+    if platform:
+        try:
+            platform.reserve_order_inventory(ctx.business.id, order.id, planned_items)
+        except ValueError as exc:
+            return f"Sorry, {exc}. Would you like to adjust the quantity?"
     if conv.order is None:
-        conv.order = Order()
+        conv.order = order
     conv.order.add_item(product.name, quantity, product.price)
 
     cur = ctx.business.currency
@@ -73,13 +100,74 @@ def capture_order(args: dict, ctx: ToolContext) -> str:
 
 
 def escalate_to_human(args: dict, ctx: ToolContext) -> str:
+    del args
     ctx.conversation.needs_human = True
-    reason = str(args.get("reason", "")).strip()
-    note = f" ({reason})" if reason else ""
     return (
-        f"I'm connecting you with the {ctx.business.name} team now{note}. "
-        "Someone will reply here shortly."
+        f"I've flagged your request for the {ctx.business.name} team. "
+        "They can review it in the staff inbox; response times depend on their availability."
     )
+
+
+def set_delivery_note(args: dict, ctx: ToolContext) -> str:
+    if ctx.conversation.order is None or not ctx.conversation.order.items:
+        return "There isn't an order yet. Tell me what you would like to order first."
+    note = str(args.get("note", "")).strip()
+    if not note or len(note) > 500:
+        return "Please provide a delivery note of 1 to 500 characters."
+    ctx.conversation.order.delivery_note = note
+    return "I've added that delivery instruction to your order."
+
+
+def remove_order_item(args: dict, ctx: ToolContext) -> str:
+    order = ctx.conversation.order
+    if order is None or not order.items:
+        return "There isn't an order to update."
+    if order.status in {OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID}:
+        return "This order can't be edited while payment is pending or after payment. Let me connect you with the shop team."
+    product = ctx.business.find_product(str(args.get("item", "")))
+    if product is None:
+        return "I couldn't match that item in your order. Please tell me its product name."
+    item = next((line for line in order.items if line.name.lower() == product.name.lower()), None)
+    if item is None:
+        return f"{product.name} isn't in this order."
+    try:
+        quantity = int(args.get("quantity", item.quantity))
+    except (TypeError, ValueError):
+        return "Please provide a valid quantity."
+    if quantity <= 0 or quantity > item.quantity:
+        return f"Please choose a quantity from 1 to {item.quantity}."
+    item.quantity -= quantity
+    if item.quantity == 0:
+        order.items.remove(item)
+    if ctx.extra.get("platform"):
+        ctx.extra["platform"].reserve_order_inventory(
+            ctx.business.id,
+            order.id,
+            [{"name": line.name, "quantity": line.quantity} for line in order.items],
+        )
+    if not order.items:
+        ctx.conversation.order = None
+        return f"Removed {product.name}. Your order is now empty."
+    return f"Updated your order. The new total is {ctx.business.currency} {order.total:,.0f}."
+
+
+def cancel_order(args: dict, ctx: ToolContext) -> str:
+    del args
+    order = ctx.conversation.order
+    if order is None:
+        return "There isn't an order to cancel."
+    if order.status == OrderStatus.PAID:
+        ctx.conversation.needs_human = True
+        return "The order is already paid; I'll ask the shop team to help with cancellation or refund."
+    if order.status == OrderStatus.AWAITING_PAYMENT:
+        ctx.conversation.needs_human = True
+        return "A payment request may still complete. I'll ask the shop team to verify it before cancellation."
+    order.status = OrderStatus.CANCELLED
+    if ctx.extra.get("platform"):
+        ctx.extra["platform"].release_order_inventory(ctx.business.id, order.id)
+    ctx.conversation.order = None
+    ctx.conversation.payment = None
+    return "I've cancelled the unpaid order."
 
 
 def confirm_order_ready_for_payment(ctx: ToolContext) -> tuple[bool, str]:
@@ -98,4 +186,7 @@ BASE_TOOLS: dict[str, Tool] = {
     "lookup_knowledge": lookup_knowledge,
     "capture_order": capture_order,
     "escalate_to_human": escalate_to_human,
+    "set_delivery_note": set_delivery_note,
+    "remove_order_item": remove_order_item,
+    "cancel_order": cancel_order,
 }

@@ -38,6 +38,8 @@ class DarajaClient:
         transaction_type: str = "CustomerPayBillOnline",
         timeout: float = 30.0,
     ):
+        if environment not in {"sandbox", "production"}:
+            raise ValueError("MPESA_ENVIRONMENT must be 'sandbox' or 'production'")
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
         self.shortcode = shortcode
@@ -65,6 +67,9 @@ class DarajaClient:
         self._token = data["access_token"]
         self._token_expiry = time.time() + int(data.get("expires_in", 3599))
         return self._token
+
+    def verify_credentials(self) -> bool:
+        return bool(self._access_token())
 
     def _password(self, timestamp: str) -> str:
         raw = f"{self.shortcode}{self.passkey}{timestamp}".encode()

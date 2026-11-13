@@ -1,14 +1,11 @@
-# Hermes API image -- the real, connectable product: WhatsApp webhook,
-# M-Pesa callback, and chat endpoint. Point a WhatsApp Business app's webhook
-# and a Daraja callback URL at this, supply credentials as env vars, and it
-# serves real customers. (The Streamlit demo dashboard is built on the
-# `huggingface` branch instead.)
+# Hermes API and background-worker image.
 FROM python:3.12-slim
 
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY hermes/ hermes/
+COPY scripts/ scripts/
 RUN pip install --no-cache-dir -e .
 
 # Writable location for the SQLite conversation store (a production deploy

@@ -7,6 +7,8 @@ manage Payment/Order state on the conversation.
 
 from __future__ import annotations
 
+import time
+
 from hermes.models import OrderStatus, Payment, PaymentStatus
 from hermes.mpesa.base import normalize_phone
 from hermes.tools import BASE_TOOLS, Tool, ToolContext, confirm_order_ready_for_payment
@@ -20,8 +22,21 @@ def mpesa_stk_push(args: dict, ctx: ToolContext) -> str:
         return "Payment isn't set up for this shop yet - let me get someone to help."
 
     conv = ctx.conversation
-    phone = normalize_phone(str(args.get("phone") or conv.customer_phone))
+    phone = normalize_phone(conv.customer_phone)
     amount = conv.order.total
+    if amount <= 0:
+        return "This order total can't be charged. Please let the shop team help."
+    platform = ctx.extra.get("platform")
+    if platform:
+        try:
+            platform.reserve_order_inventory(
+                ctx.business.id,
+                conv.order.id,
+                [{"name": item.name, "quantity": item.quantity} for item in conv.order.items],
+                expires_at=time.time() + 20 * 60,
+            )
+        except ValueError as exc:
+            return f"I can't start payment because {exc}. Let me connect you with the shop team."
 
     result = ctx.mpesa.stk_push(
         phone=phone,
@@ -55,19 +70,23 @@ def check_payment(args: dict, ctx: ToolContext) -> str:
         return "Payment isn't set up for this shop yet."
 
     status = ctx.mpesa.query_status(conv.payment.checkout_request_id)
-    conv.payment.status = status
 
     if status == PaymentStatus.SUCCESS:
-        if conv.order is not None:
-            conv.order.status = OrderStatus.PAID
+        conv.needs_human = True
         return (
-            f"Payment received - thank you! Your order {conv.order.id if conv.order else ''} "
-            "is confirmed and we'll get it ready."
+            "M-Pesa reports that the payment succeeded. I am waiting for the payment "
+            "receipt callback to verify the amount and payer before confirming your order; "
+            "the shop team has been notified."
         )
     if status == PaymentStatus.PENDING:
         return "I haven't seen the payment yet. Please enter your M-Pesa PIN on the prompt."
+    conv.payment.status = status
     if status == PaymentStatus.TIMEOUT:
+        if conv.order is not None and ctx.extra.get("platform"):
+            ctx.extra["platform"].release_order_inventory(ctx.business.id, conv.order.id)
         return "The M-Pesa prompt timed out. Shall I send it again?"
+    if status == PaymentStatus.FAILED and conv.order is not None and ctx.extra.get("platform"):
+        ctx.extra["platform"].release_order_inventory(ctx.business.id, conv.order.id)
     return "The payment didn't go through. Would you like me to resend the prompt?"
 
 

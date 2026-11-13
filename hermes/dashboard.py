@@ -9,6 +9,7 @@ whole order -> pay -> confirm loop is demonstrable with no accounts.
 
 from __future__ import annotations
 
+import hmac
 import os
 
 import pandas as pd
@@ -18,6 +19,22 @@ from hermes.models import Conversation, PaymentStatus, Role
 from hermes.runtime import Runtime
 
 st.set_page_config(page_title="Hermes - WhatsApp AI for SMEs", page_icon="🛒", layout="wide")
+
+dashboard_password = os.getenv("HERMES_DASHBOARD_PASSWORD", "")
+if not dashboard_password:
+    st.error("Owner dashboard is disabled. Configure HERMES_DASHBOARD_PASSWORD to enable access.")
+    st.stop()
+
+if not st.session_state.get("dashboard_authenticated"):
+    with st.form("dashboard_login"):
+        entered_password = st.text_input("Owner dashboard password", type="password")
+        submitted = st.form_submit_button("Sign in")
+    if submitted and hmac.compare_digest(entered_password, dashboard_password):
+        st.session_state.dashboard_authenticated = True
+        st.rerun()
+    if submitted:
+        st.error("Incorrect password.")
+    st.stop()
 
 
 @st.cache_resource
@@ -112,7 +129,7 @@ with tab_chat:
 # -- Owner dashboard ----------------------------------------------------------
 
 with tab_dash:
-    m = rt.store.metrics()
+    m = rt.store.metrics(business_id=business.id)
     if m["total_conversations"] == 0:
         st.info("No conversations yet. Chat with the agent (or seed demo data) to populate this.")
     else:
@@ -129,7 +146,7 @@ with tab_dash:
 
         st.markdown("**Recent conversations**")
         rows = []
-        for c in rt.store.list_conversations(limit=100):
+        for c in rt.store.list_conversations(limit=100, business_id=business.id):
             rows.append(
                 {
                     "phone": c.customer_phone,

@@ -66,7 +66,7 @@ class TestMockIntents:
 
 
 class TestDefaultTools:
-    def test_exposes_the_five_core_tools(self):
+    def test_exposes_the_core_tools(self):
         names = {t.name for t in default_tools()}
         assert names == {
             "lookup_knowledge",
@@ -74,4 +74,7 @@ class TestDefaultTools:
             "mpesa_stk_push",
             "check_payment",
             "escalate_to_human",
+            "set_delivery_note",
+            "remove_order_item",
+            "cancel_order",
         }

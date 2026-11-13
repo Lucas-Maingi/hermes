@@ -7,6 +7,7 @@ multi-tenant seam that lets one deployment serve many businesses.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 
@@ -17,6 +18,15 @@ class Product:
     aliases: list[str] = field(default_factory=list)
     in_stock: bool = True
     unit: str = ""           # e.g. "2kg", "1L" -- display only
+    stock_quantity: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("Product name cannot be empty")
+        if not math.isfinite(self.price) or self.price < 0:
+            raise ValueError("Product price must be finite and non-negative")
+        if self.stock_quantity is not None and self.stock_quantity < 0:
+            raise ValueError("Product stock quantity must be non-negative")
 
     def matches(self, text: str) -> bool:
         text = text.lower()

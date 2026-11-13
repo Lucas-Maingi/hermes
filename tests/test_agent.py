@@ -1,4 +1,7 @@
+import pytest
+
 from hermes.agent import Agent, build_agent
+from hermes.business import Business
 from hermes.llm.mock import MockLLM
 from hermes.models import Conversation, OrderStatus, PaymentStatus
 from hermes.mpesa.simulator import MpesaSimulator
@@ -49,12 +52,13 @@ class TestAgentConversation:
         assert conv.order.status == OrderStatus.AWAITING_PAYMENT
         assert "360" in pay_reply
 
-        # Customer enters PIN (simulated), then agent confirms.
+        # A success-only query must wait for callback metadata verification.
         sim.complete_payment(conv.payment.checkout_request_id, success=True)
-        confirm = agent.handle_message(conv, "have you received it?")
-        # 'received' comes via check_payment; the mock may answer generally, so
-        # assert the authoritative state instead of exact wording.
-        assert conv.payment.status == PaymentStatus.SUCCESS or "received" in confirm.lower()
+        reply = agent.handle_message(conv, "have you received it?")
+        assert conv.payment.status == PaymentStatus.PENDING
+        assert conv.order.status == OrderStatus.AWAITING_PAYMENT
+        assert conv.needs_human is True
+        assert "waiting for the payment receipt callback" in reply.lower()
 
     def test_tools_used_recorded_in_message_metadata(self):
         agent = make_agent()
@@ -67,6 +71,14 @@ class TestAgentConversation:
         conv = Conversation(customer_phone="254712345678")
         reply = agent.handle_message(conv, "asdkjfh qwe zzz")
         assert isinstance(reply, str) and reply
+
+    def test_agent_rejects_conversation_from_another_business(self):
+        agent = Agent(Business(id="shop_b", name="Shop B"), MockLLM())
+        conv = Conversation(business_id="shop_a", customer_phone="254712345678")
+
+        with pytest.raises(ValueError, match="different business"):
+            agent.handle_message(conv, "hello")
+        assert conv.messages == []
 
 
 class TestBuildAgent:
